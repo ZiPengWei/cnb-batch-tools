@@ -9,9 +9,23 @@
     @update:show="setShow"
   >
     <n-space vertical>
-      <n-text>源分支: {{ sourceBranches.length }} 个</n-text>
-      <n-text>目标分支: {{ targetCount }} 个</n-text>
-      <n-text>总计创建 PR: {{ targetCount }} 个</n-text>
+      <n-text>仓库：{{ repo || '未选择' }}</n-text>
+      <n-text>源分支：{{ sourceBranches.join('、') || '未选择' }}</n-text>
+      <n-text>目标分支：{{ targetCount }} 个</n-text>
+      <div
+        v-if="targetBranches.length"
+        :style="targetListStyle"
+      >
+        <n-tag
+          v-for="target in targetBranches"
+          :key="target"
+        >
+          {{ target }}
+        </n-tag>
+      </div>
+      <n-text depth="3">
+        将为每个目标分支分别创建 PR，共 {{ targetCount }} 个。
+      </n-text>
       <n-alert
         :show-icon="true"
         type="warning"
@@ -77,6 +91,7 @@
  * - repo: 当前仓库路径（org/repo）
  * - sourceBranches: 源分支列表
  * - targetCount: 目标分支数量（用于展示文案）
+ * - targetBranches: 目标分支名称（用于合并前核对）
  * - logLines: 日志文本行数组
  * - run: 触发合并的异步函数，返回合并摘要或 null
  * - disableCloseWhenRunning: 运行中是否禁止关闭
@@ -95,6 +110,7 @@ import {
   NLog,
   NModal,
   NSpace,
+  NTag,
   NText,
   useThemeVars,
 } from '../ui/naive'
@@ -110,6 +126,7 @@ const props = withDefaults(
     repo: string | null | undefined
     sourceBranches: string[]
     targetCount: number
+    targetBranches?: string[]
     logLines: string[]
     run: (repo: string, sourceBranches: string[]) => Promise<MergeRunSummary | null>
     disableCloseWhenRunning?: boolean
@@ -120,6 +137,7 @@ const props = withDefaults(
   }>(),
   {
     disableCloseWhenRunning: true,
+    targetBranches: () => [],
     modalWidth: 'min(600px, 92vw)',
     confirmTitle: '确认合并',
     runningTitle: '正在合并...',
@@ -142,6 +160,20 @@ const themeVars = useThemeVars()
 const modalStyle = computed(() => ({
   width: props.modalWidth,
 }))
+
+const targetListStyle = computed(() => {
+  const v = themeVars.value
+  return {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    maxHeight: '120px',
+    overflowY: 'auto',
+    padding: '8px',
+    border: `1px solid ${v.borderColor}`,
+    borderRadius: v.borderRadiusSmall,
+  } as const
+})
 
 const logBoxStyle = computed(() => {
   const v = themeVars.value

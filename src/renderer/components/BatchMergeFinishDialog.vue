@@ -7,70 +7,110 @@
     @update:show="setShow"
   >
     <n-space vertical>
-      <template v-if="summary?.merged.length">
-        <div class="section-title">
-          <n-text type="success">
-            成功合并 ({{ summary.merged.length }})
-          </n-text>
-        </div>
-        <n-space vertical>
-          <n-text
-            v-for="(m, i) in summary.merged"
-            :key="`m-${i}`"
-          >
-            ✓ {{ m.source }} -> {{ m.target }}
-          </n-text>
-        </n-space>
-      </template>
+      <n-space
+        v-if="summary"
+        align="center"
+      >
+        <n-tag :type="summary.merged.length ? 'success' : 'default'">
+          成功 {{ summary.merged.length }}
+        </n-tag>
+        <n-tag :type="summary.conflicts.length ? 'warning' : 'default'">
+          冲突 {{ summary.conflicts.length }}
+        </n-tag>
+        <n-tag :type="summary.failures.length ? 'error' : 'default'">
+          失败 {{ summary.failures.length }}
+        </n-tag>
+        <n-tag>
+          无变更 {{ summary.noop.length }}
+        </n-tag>
+      </n-space>
 
-      <template v-if="summary?.conflicts.length">
-        <div class="section-title">
+      <details
+        v-if="summary?.conflicts.length"
+        class="result-details"
+        open
+      >
+        <summary>
           <n-text type="warning">
             存在冲突，已跳过并取消 PR ({{ summary.conflicts.length }})
           </n-text>
+        </summary>
+        <div class="detail-content">
+          <n-space vertical>
+            <n-text
+              v-for="(c, i) in summary.conflicts"
+              :key="`c-${i}`"
+            >
+              ✗ {{ c.source }} -> {{ c.target }}（{{ c.reason || '检测到冲突' }}）
+            </n-text>
+          </n-space>
         </div>
-        <n-space vertical>
-          <n-text
-            v-for="(c, i) in summary.conflicts"
-            :key="`c-${i}`"
-          >
-            ✗ {{ c.source }} -> {{ c.target }}（{{ c.reason || '检测到冲突' }}）
-          </n-text>
-        </n-space>
-      </template>
+      </details>
 
-      <template v-if="summary?.failures.length">
-        <div class="section-title">
+      <details
+        v-if="summary?.failures.length"
+        class="result-details"
+        open
+      >
+        <summary>
           <n-text type="error">
             失败 ({{ summary.failures.length }})
           </n-text>
+        </summary>
+        <div class="detail-content">
+          <n-space vertical>
+            <n-text
+              v-for="(f, i) in summary.failures"
+              :key="`f-${i}`"
+            >
+              ✗ {{ f.source }} -> {{ f.target }}（{{ f.reason || '未知原因' }}）
+            </n-text>
+          </n-space>
         </div>
-        <n-space vertical>
-          <n-text
-            v-for="(f, i) in summary.failures"
-            :key="`f-${i}`"
-          >
-            ✗ {{ f.source }} -> {{ f.target }}（{{ f.reason || '未知原因' }}）
-          </n-text>
-        </n-space>
-      </template>
+      </details>
 
-      <template v-if="summary?.noop.length">
-        <div class="section-title">
+      <details
+        v-if="summary?.merged.length"
+        class="result-details"
+      >
+        <summary>
+          <n-text type="success">
+            成功合并 ({{ summary.merged.length }})
+          </n-text>
+        </summary>
+        <div class="detail-content">
+          <n-space vertical>
+            <n-text
+              v-for="(m, i) in summary.merged"
+              :key="`m-${i}`"
+            >
+              ✓ {{ m.source }} -> {{ m.target }}
+            </n-text>
+          </n-space>
+        </div>
+      </details>
+
+      <details
+        v-if="summary?.noop.length"
+        class="result-details"
+      >
+        <summary>
           <n-text depth="3">
             无变更，已跳过 ({{ summary.noop.length }})
           </n-text>
+        </summary>
+        <div class="detail-content">
+          <n-space vertical>
+            <n-text
+              v-for="(n, i) in summary.noop"
+              :key="`n-${i}`"
+              depth="3"
+            >
+              {{ n.source }} -> {{ n.target }}（{{ n.reason || '无变更' }}）
+            </n-text>
+          </n-space>
         </div>
-        <n-space vertical>
-          <n-text
-            v-for="(n, i) in summary.noop"
-            :key="`n-${i}`"
-            depth="3"
-          >
-            {{ n.source }} -> {{ n.target }}（{{ n.reason || '无变更' }}）
-          </n-text>
-        </n-space>
-      </template>
+      </details>
 
       <n-text
         v-if="summary?.message"
@@ -79,16 +119,20 @@
         {{ summary.message }}
       </n-text>
 
-      <div class="section-title">
-        <n-text depth="3">
-          操作日志
-        </n-text>
-      </div>
-      <n-log
-        :log="logLines.join('\n')"
-        :rows="10"
-        :style="logBoxStyle"
-      />
+      <details class="result-details">
+        <summary>
+          <n-text depth="3">
+            操作日志
+          </n-text>
+        </summary>
+        <div class="detail-content">
+          <n-log
+            :log="logLines.join('\n')"
+            :rows="10"
+            :style="logBoxStyle"
+          />
+        </div>
+      </details>
     </n-space>
     <template #action>
       <n-button
@@ -117,7 +161,7 @@
  */
 import { computed } from 'vue'
 import type { MergeRunSummary } from '../store/merge'
-import { NButton, NLog, NModal, NSpace, NText, useThemeVars } from '../ui/naive'
+import { NButton, NLog, NModal, NSpace, NTag, NText, useThemeVars } from '../ui/naive'
 
 const props = withDefaults(
   defineProps<{
@@ -170,8 +214,22 @@ function close() {
 </script>
 
 <style scoped>
-.section-title {
-  display: block;
-  margin-top: 8px;
+.result-details {
+  border-top: 1px solid var(--n-border-color, transparent);
+  padding-top: 8px;
+}
+
+.result-details summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.result-details summary::marker {
+  color: var(--n-text-color-3, currentColor);
+}
+
+.detail-content {
+  padding: 12px 0 4px 18px;
+  overflow-wrap: anywhere;
 }
 </style>

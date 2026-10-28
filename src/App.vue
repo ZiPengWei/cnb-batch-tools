@@ -261,9 +261,7 @@
                 </n-card>
               </div>
 
-              <div
-                :style="styles.tripleRow"
-              >
+              <div class="triple-row">
                 <div :style="styles.col">
                   <n-card
                     :content-style="styles.cardContent"
@@ -322,10 +320,16 @@
                                 :style="styles.repoNameText"
                               >{{ p.display }}</span>
                               <span
+                                :aria-label="projects.pinnedRepos.includes(p.id) ? `取消置顶 ${p.display}` : `置顶 ${p.display}`"
+                                class="pin-btn"
                                 :data-pinned="projects.pinnedRepos.includes(p.id) ? 'true' : 'false'"
+                                role="button"
                                 :style="[styles.pinBtn, projects.pinnedRepos.includes(p.id) ? styles.pinBtnOn : styles.pinBtnOff]"
+                                tabindex="0"
                                 :title="projects.pinnedRepos.includes(p.id) ? '取消置顶' : '置顶'"
                                 @click.stop="projects.togglePin(p.id)"
+                                @keydown.enter.stop.prevent="projects.togglePin(p.id)"
+                                @keydown.space.stop.prevent="projects.togglePin(p.id)"
                               >
                                 📌
                               </span>
@@ -454,14 +458,23 @@
                     title="3. 选择目标分支"
                   >
                     <template #header-extra>
-                      <n-button
-                        :disabled="merge.running || !projects.selectedRepo || !projects.selectedSourceBranch || !merge.selectedTargets.length"
-                        :loading="merge.running"
-                        type="primary"
-                        @click="onClickBatch"
-                      >
-                        {{ merge.running ? '处理中...' : mergeButtonText }}
-                      </n-button>
+                      <n-space align="center">
+                        <n-button
+                          :disabled="!displayTargetRows.some((row) => row.type === 'branch')"
+                          text
+                          type="primary"
+                          @click="selectVisibleTargets"
+                        >
+                          全选当前
+                        </n-button>
+                        <n-button
+                          :disabled="!merge.selectedTargets.length"
+                          text
+                          @click="merge.selectedTargets = []"
+                        >
+                          清空
+                        </n-button>
+                      </n-space>
                     </template>
                     <div :style="styles.fill">
                       <n-input
@@ -488,6 +501,7 @@
                               />
                               <n-button
                                 v-else
+                                :aria-pressed="merge.selectedTargets.includes(row.name)"
                                 block
                                 :class="'gl-list-item'"
                                 :data-item-key="row.name"
@@ -498,11 +512,20 @@
                                 :type="merge.selectedTargets.includes(row.name) ? 'primary' : 'default'"
                                 @click="onClickTargetRow(row.name, $event)"
                               >
-                                <template
-                                  v-if="row.isCore"
-                                  #icon
-                                >
-                                  <span :style="styles.starIcon">★</span>
+                                <template #icon>
+                                  <span
+                                    v-if="merge.selectedTargets.includes(row.name)"
+                                    :style="styles.checkIcon"
+                                  >✓</span>
+                                  <span
+                                    v-else-if="row.isCore"
+                                    :style="styles.starIcon"
+                                    title="核心环境分支"
+                                  >★</span>
+                                  <span
+                                    v-else
+                                    :style="styles.checkIcon"
+                                  >+</span>
                                 </template>
                                 <span class="gl-ellipsis-1">{{ row.name }}</span>
                               </n-button>
@@ -546,6 +569,44 @@
                   </n-card>
                 </div>
               </div>
+
+              <div
+                class="action-bar"
+                :style="styles.actionBar"
+              >
+                <div :style="styles.actionSummary">
+                  <n-text strong>
+                    {{ projects.selectedProjectName || '请选择仓库' }}
+                  </n-text>
+                  <n-text
+                    depth="3"
+                    :style="styles.caption"
+                  >
+                    {{ projects.selectedSourceBranch || '未选择源分支' }}
+                    <span v-if="merge.selectedTargets.length">
+                      → {{ selectedTargetsSummary }}
+                    </span>
+                    <span v-else>→ 未选择目标分支</span>
+                  </n-text>
+                </div>
+                <n-space align="center">
+                  <n-text
+                    v-if="merge.selectedTargets.length"
+                    depth="3"
+                    :style="styles.caption"
+                  >
+                    已选 {{ merge.selectedTargets.length }} 个目标分支
+                  </n-text>
+                  <n-button
+                    :disabled="merge.running || !projects.selectedRepo || !projects.selectedSourceBranch || !merge.selectedTargets.length"
+                    :loading="merge.running"
+                    type="primary"
+                    @click="onClickBatch"
+                  >
+                    {{ merge.running ? '处理中...' : mergeButtonText }}
+                  </n-button>
+                </n-space>
+              </div>
             </n-flex>
 
             <BatchMergeFlowDialog
@@ -582,6 +643,7 @@ import {
   NText,
   NSpin,
   NEmpty,
+  NFlex,
   NLoadingBarProvider,
   NMessageProvider,
   NNotificationProvider,
@@ -616,20 +678,20 @@ const styles = computed(() => {
 
   return {
     listThemeVars: {
-      '--gl-list-transition': '240ms',
+      '--gl-list-transition': '160ms',
       '--gl-list-radius': v.borderRadiusSmall,
       '--gl-list-indicator': v.primaryColor,
       '--gl-list-indicator-hover': v.primaryColorHover,
       '--gl-list-bg-hover': `color-mix(in srgb, ${v.primaryColor} 10%, transparent)`,
       '--gl-list-bg-selected': `color-mix(in srgb, ${v.primaryColor} 16%, transparent)`,
       '--gl-list-bg-active': `color-mix(in srgb, ${v.primaryColorPressed} 22%, transparent)`,
-      '--gl-list-shadow-hover': v.boxShadow2,
-      '--gl-list-shadow-selected': v.boxShadow3,
+      '--gl-list-shadow-hover': 'none',
+      '--gl-list-shadow-selected': 'none',
       '--gl-list-focus-ring': `0 0 0 2px color-mix(in srgb, ${v.primaryColor} 38%, transparent)`,
       '--gl-list-text-selected': v.textColor1,
     },
     contentInner: {
-      width: 'min(1200px, 94vw)',
+      width: 'min(1618px, 94vw)',
       height: '100vh',
       margin: '0 auto',
       padding: 'min(24px, 4vw)',
@@ -664,17 +726,26 @@ const styles = computed(() => {
       marginRight: '4px',
       verticalAlign: 'middle',
     },
-    tripleRow: {
+    actionBar: {
+      flex: '0 0 auto',
       display: 'flex',
-      // flexWrap: 'wrap',
-      gap: '16px',
-      alignItems: 'stretch',
-      alignContent: 'stretch',
-      flex: '1 0 auto',
-      minHeight: 0,
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '15px',
+      padding: '12px 15px',
+      border: `1px solid ${v.borderColor}`,
+      borderRadius: v.borderRadius,
+      backgroundColor: v.cardColor,
+      boxSizing: 'border-box',
+    },
+    actionSummary: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      minWidth: 0,
+      overflowWrap: 'anywhere',
     },
     col: {
-      width: 'calc((100% - 32px) / 3)',
       display: 'flex',
       flexDirection: 'column',
       minHeight: 0,
@@ -771,6 +842,13 @@ const styles = computed(() => {
     starIcon: {
       color: v.warningColor,
     },
+    checkIcon: {
+      display: 'inline-block',
+      width: '14px',
+      color: v.primaryColor,
+      textAlign: 'center',
+      fontWeight: 600,
+    },
   } as const
 })
 
@@ -842,6 +920,12 @@ const displayTargetRows = computed<TargetRow[]>(() => {
   if (core.length && others.length) rows.push({ type: 'separator' })
   rows.push(...others.map((name) => ({ type: 'branch' as const, name, isCore: false })))
   return rows
+})
+
+const selectedTargetsSummary = computed(() => {
+  const targets = selectedTargets.value
+  const preview = targets.slice(0, 3).join('、')
+  return targets.length > 3 ? `${preview} 等 ${targets.length} 个` : preview
 })
 
 const mergeButtonText = computed(() => {
@@ -919,6 +1003,13 @@ function onToggleTarget(name: string) {
   merge.toggleTarget(name)
 }
 
+function selectVisibleTargets() {
+  const visible = displayTargetRows.value
+    .filter((row): row is { type: 'branch'; name: string; isCore: boolean } => row.type === 'branch')
+    .map((row) => row.name)
+  merge.selectedTargets = [...new Set([...merge.selectedTargets, ...visible])]
+}
+
 watch(
   () => auth.connected,
   (val) => {
@@ -976,6 +1067,20 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.triple-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pin-btn:focus-visible {
+  outline: 2px solid var(--gl-list-indicator);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .gl-list-item {
   position: relative;
   justify-content: flex-start;
@@ -1074,5 +1179,28 @@ onUnmounted(() => {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+@media (max-width: 960px) {
+  .triple-row {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+
+  .triple-row > div {
+    min-height: 320px;
+  }
+
+  .action-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gl-list-item,
+  .gl-list-item::before {
+    transition: none;
+  }
 }
 </style>

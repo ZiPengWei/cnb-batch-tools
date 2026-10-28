@@ -6,6 +6,7 @@
     :repo="projects.selectedRepo"
     :run="merge.run"
     :source-branches="projects.selectedSourceBranch ? [projects.selectedSourceBranch] : []"
+    :target-branches="merge.selectedTargets"
     :target-count="merge.selectedTargets.length"
     @run-finish="onMergeFinished"
   />
