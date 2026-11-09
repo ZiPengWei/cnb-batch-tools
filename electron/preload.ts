@@ -16,6 +16,8 @@ function getChannelMap(channel: string) {
 }
 
 contextBridge.exposeInMainWorld("ipcRenderer", {
+  // 只读平台标识（win32/darwin/...），供渲染层按平台显示设置项
+  platform: process.platform,
   on(...args: Parameters<typeof ipcRenderer.on>) {
     const [channel, listener] = args;
     const ch = String(channel);

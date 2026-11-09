@@ -26,7 +26,7 @@ export const useAuthStore = defineStore('auth', {
     loggingIn: false,
   }),
   actions: {
-    loadLocal() {
+    async loadLocal() {
       try {
         const raw = localStorage.getItem(CNB_AUTH_STORAGE_KEY)
         if (raw) {
@@ -43,6 +43,39 @@ export const useAuthStore = defineStore('auth', {
         this.userName = 'E2E'
         const projects = useProjectsStore()
         projects.loadProjects()
+        return
+      }
+      // 有已保存的凭证时静默重连，恢复登录状态
+      // （macOS 关窗重开 / 应用重启后不再回到登录页）
+      await this.restoreSession()
+    },
+    /**
+     * 静默重连：用已持久化的凭证向主进程重新认证并恢复 connected 状态。
+     * 成功则恢复用户名并加载仓库列表；失败则静默保持未连接（凭证保留，用户可手动重试）。
+     */
+    async restoreSession() {
+      if (this.connected) return
+      const hasCredentials =
+        this.mode === 'cookie' ? Boolean(this.webCookie) : Boolean(this.token)
+      if (!hasCredentials) return
+      this.busy = true
+      try {
+        const res = await setAuth({
+          baseUrl: this.baseUrl,
+          token: this.token,
+          webCookie: this.webCookie,
+          mode: this.mode,
+        })
+        if (res?.ok) {
+          this.connected = true
+          this.userName = res.user?.nickname || res.user?.username || ''
+          const projects = useProjectsStore()
+          projects.loadProjects()
+        }
+      } catch {
+        /* 静默失败：网络异常等场景不打扰用户 */
+      } finally {
+        this.busy = false
       }
     },
     saveLocal() {

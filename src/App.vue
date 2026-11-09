@@ -261,6 +261,25 @@
                 </n-card>
               </div>
 
+              <div
+                v-if="isWindows"
+                :style="styles.closeActionBar"
+              >
+                <n-text
+                  depth="3"
+                  :style="styles.caption"
+                >
+                  关闭窗口时
+                </n-text>
+                <div :style="styles.closeActionSelectWrap">
+                  <n-select
+                    v-model:value="closeAction"
+                    :options="closeActionOptions"
+                    @update:value="onChangeCloseAction"
+                  />
+                </div>
+              </div>
+
               <div class="triple-row">
                 <div :style="styles.col">
                   <n-card
@@ -628,9 +647,13 @@ import BatchMergeFlowDialog, { type BatchMergeFlowDialogExposed } from './render
 import {
   checkForUpdate,
   getAppVersion,
+  getCloseAction,
+  getPlatform,
   getUpdateStatus,
   onUpdateStatus,
   openExternal,
+  setCloseAction,
+  type CloseAction,
   type UpdateStatus,
 } from './renderer/ipc/bridge'
 import {
@@ -650,6 +673,7 @@ import {
   NCard,
   NGrid,
   NGridItem,
+  NSelect,
   NSpace,
   NTag,
   NCollapseTransition,
@@ -705,6 +729,17 @@ const styles = computed(() => {
     authCardWrap: {
       flex: '0 0 auto',
       minHeight: 0,
+    },
+    closeActionBar: {
+      flex: '0 0 auto',
+      display: 'flex',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      gap: '8px',
+      marginTop: '-4px',
+    },
+    closeActionSelectWrap: {
+      width: '176px',
     },
     authPanel: {
       paddingTop: '12px',
@@ -976,6 +1011,23 @@ function openReleasePage() {
 
 let offUpdateStatus: (() => void) | null = null
 
+// ---------- Windows：关闭行为设置（最小化到托盘 / 直接退出 / 每次询问） ----------
+const isWindows = getPlatform() === 'win32'
+const closeAction = ref<CloseAction>('ask')
+const closeActionOptions = [
+  { label: '每次询问', value: 'ask' },
+  { label: '最小化到系统托盘', value: 'tray' },
+  { label: '直接退出', value: 'exit' },
+]
+
+async function onChangeCloseAction(v: CloseAction) {
+  try {
+    await setCloseAction(v)
+  } catch {
+    /* 主进程保存失败不阻塞 UI，下次启动会重新读取 */
+  }
+}
+
 function scrollEventTargetIntoView(e: MouseEvent) {
   const el = e.currentTarget as HTMLElement | null
   if (!el) return
@@ -1014,6 +1066,8 @@ watch(
   () => auth.connected,
   (val) => {
     isAuthExpanded.value = !val
+    // 已用令牌连接时认证面板默认展示令牌页（含静默重连恢复的场景）
+    if (val && auth.mode === 'token') authTab.value = 'token'
   },
   { immediate: true }
 )
@@ -1043,8 +1097,15 @@ watch(
 
 onMounted(async () => {
   auth.loadLocal()
-  // 默认展示"网页登录"；原本已用令牌连接（有用户信息）时才默认展示令牌面板
-  if (auth.connected && auth.mode === 'token') authTab.value = 'token'
+
+  // Windows：读取关闭行为偏好（仅 Electron 环境有效）
+  if (isWindows) {
+    try {
+      closeAction.value = await getCloseAction()
+    } catch {
+      /* 非 Electron 环境跳过 */
+    }
+  }
 
   // 更新检查：订阅主进程推送 + 恢复已缓存的检查结果（主进程启动 3 秒后会自动检查）
   try {

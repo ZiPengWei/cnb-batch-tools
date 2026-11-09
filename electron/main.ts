@@ -1,6 +1,18 @@
-import { app, BrowserWindow, ipcMain, screen, session, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  nativeImage,
+  screen,
+  session,
+  shell,
+  Tray,
+} from "electron";
 import type { IpcMainInvokeEvent, WebContents } from "electron";
 import { fileURLToPath } from "node:url";
+import fs from "node:fs";
 import path from "node:path";
 import { CnbClient } from "../src/main/services/cnbClient";
 import { MergeService } from "../src/main/services/mergeService";
@@ -342,6 +354,123 @@ ipcMain.handle("shell:open-external", async (_event, url: string) => {
   await shell.openExternal(url);
 });
 
+// ---------- Windows 关闭行为（托盘最小化 / 直接退出，可记住选择） ----------
+
+type CloseAction = "ask" | "tray" | "exit";
+
+let closeAction: CloseAction = "ask";
+let tray: Tray | null = null;
+/** 真正退出（托盘菜单/Cmd+Q/app.quit）时置 true，close 拦截据此放行 */
+let isQuitting = false;
+
+function prefsFile() {
+  return path.join(app.getPath("userData"), "preferences.json");
+}
+
+function readPrefs(): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(prefsFile(), "utf8"));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function loadCloseAction(): CloseAction {
+  const v = readPrefs().closeAction;
+  return v === "tray" || v === "exit" || v === "ask" ? v : "ask";
+}
+
+function saveCloseAction(action: CloseAction) {
+  try {
+    const prefs = readPrefs();
+    prefs.closeAction = action;
+    fs.mkdirSync(path.dirname(prefsFile()), { recursive: true });
+    fs.writeFileSync(prefsFile(), JSON.stringify(prefs, null, 2));
+  } catch {
+    /* 保存失败不阻塞关闭流程 */
+  }
+}
+
+function showMainWindow() {
+  if (!win || win.isDestroyed()) {
+    createWindow();
+    return;
+  }
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+/** Windows：创建系统托盘图标（首次最小化到托盘时才创建） */
+function ensureTray() {
+  if (tray || process.platform !== "win32") return;
+  const icon = nativeImage
+    .createFromPath(path.join(process.env.VITE_PUBLIC, "icon.png"))
+    .resize({ width: 16, height: 16 });
+  tray = new Tray(icon);
+  tray.setToolTip("CNB 批量合并工具");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "打开主界面", click: () => showMainWindow() },
+      { type: "separator" },
+      {
+        label: "退出",
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ])
+  );
+  tray.on("click", () => showMainWindow());
+}
+
+/**
+ * Windows：窗口关闭请求处理（close 已被 preventDefault 拦截后进入这里）。
+ * ask → 弹窗询问（可勾选记住选择）；tray → 隐藏到托盘；exit → 真正退出。
+ */
+async function handleCloseRequest() {
+  let action = closeAction;
+  if (action === "ask") {
+    if (!win || win.isDestroyed()) return;
+    const { response, checkboxChecked } = await dialog.showMessageBox(win, {
+      type: "question",
+      title: "关闭窗口",
+      message: "要最小化到系统托盘，还是直接退出？",
+      detail:
+        "最小化到托盘后程序在后台运行，可从右下角托盘图标重新打开主界面。",
+      buttons: ["最小化到托盘", "直接退出"],
+      defaultId: 0,
+      cancelId: 0,
+      checkboxLabel: "记住我的选择，不再询问",
+      noLink: true,
+    });
+    action = response === 1 ? "exit" : "tray";
+    if (checkboxChecked) {
+      closeAction = action;
+      saveCloseAction(action);
+    }
+  }
+  if (action === "exit") {
+    isQuitting = true;
+    app.quit();
+    return;
+  }
+  ensureTray();
+  if (win && !win.isDestroyed()) win.hide();
+}
+
+ipcMain.handle("app:get-close-action", () => closeAction);
+
+ipcMain.handle("app:set-close-action", (_event, action: CloseAction) => {
+  if (action === "ask" || action === "tray" || action === "exit") {
+    closeAction = action;
+    saveCloseAction(action);
+  }
+  return closeAction;
+});
+
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
@@ -393,13 +522,93 @@ function pinZoomLevel(wc: WebContents) {
   });
 }
 
+// ---------- 窗口大小/位置记忆（macOS 关窗重开、重启后不再回到初始尺寸） ----------
+
+interface SavedBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function windowBoundsFile() {
+  return path.join(app.getPath("userData"), "window-bounds.json");
+}
+
+function loadSavedBounds(): SavedBounds | null {
+  try {
+    const data = JSON.parse(fs.readFileSync(windowBoundsFile(), "utf8")) as Partial<SavedBounds>;
+    if (
+      !Number.isFinite(data.x) ||
+      !Number.isFinite(data.y) ||
+      !Number.isFinite(data.width) ||
+      !Number.isFinite(data.height) ||
+      (data.width as number) < 400 ||
+      (data.height as number) < 300
+    ) {
+      return null;
+    }
+    return {
+      x: Math.round(data.x as number),
+      y: Math.round(data.y as number),
+      width: Math.round(data.width as number),
+      height: Math.round(data.height as number),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveWindowBounds() {
+  try {
+    if (!win || win.isDestroyed() || win.isMinimized()) return;
+    // getNormalBounds 取非最大化/非全屏时的尺寸，最大化时恢复的是还原后的尺寸
+    const b = win.getNormalBounds();
+    fs.mkdirSync(path.dirname(windowBoundsFile()), { recursive: true });
+    fs.writeFileSync(windowBoundsFile(), JSON.stringify(b));
+  } catch {
+    /* 保存失败不影响关闭流程 */
+  }
+}
+
+/** 恢复的位置是否至少部分落在某个显示器的可视区域内（防止拔掉外接屏后窗口跑丢） */
+function boundsVisibleOnScreen(b: SavedBounds): boolean {
+  return screen.getAllDisplays().some((d) => {
+    const wa = d.workArea;
+    const mx = 80;
+    const my = 40;
+    return (
+      b.x + b.width > wa.x + mx &&
+      b.x < wa.x + wa.width - mx &&
+      b.y + b.height > wa.y + my &&
+      b.y < wa.y + wa.height - my
+    );
+  });
+}
+
+function restoreWindowBounds(initial: {
+  width: number;
+  height: number;
+  minWidth: number;
+  minHeight: number;
+}): SavedBounds | null {
+  const saved = loadSavedBounds();
+  if (!saved) return null;
+  if (!boundsVisibleOnScreen(saved)) return null;
+  if (saved.width < initial.minWidth || saved.height < initial.minHeight) return null;
+  return saved;
+}
+
 function createWindow() {
   const initial = computeInitialWindowBounds();
+  // 优先恢复上一次的窗口大小与位置（macOS 关窗重开 / 应用重启场景）
+  const restored = restoreWindowBounds(initial);
 
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, "icon.png"),
-    width: initial.width,
-    height: initial.height,
+    width: restored ? restored.width : initial.width,
+    height: restored ? restored.height : initial.height,
+    ...(restored ? { x: restored.x, y: restored.y } : {}),
     minWidth: initial.minWidth,
     minHeight: initial.minHeight,
     // 先隐藏窗口，页面首次渲染完成后再显示，避免启动白屏
@@ -418,7 +627,23 @@ function createWindow() {
     if (win && !win.isDestroyed() && !win.isVisible()) win.show();
   }, 3000);
 
-  win.center();
+  if (!restored) {
+    win.center();
+  }
+
+  // 关闭窗口（含 Cmd+Q 退出）前记录窗口大小与位置，供下次恢复
+  win.on("close", (e) => {
+    saveWindowBounds();
+    // Windows：按用户偏好决定最小化到托盘或真正退出；macOS 走系统默认（关窗不退出）
+    if (process.platform === "win32" && !isQuitting) {
+      e.preventDefault();
+      void handleCloseRequest();
+    }
+  });
+  // 防止持有已销毁窗口引用
+  win.on("closed", () => {
+    if (win && win.isDestroyed()) win = null;
+  });
 
   // 固定页面缩放 100%（防误触 Ctrl+滚轮 / 触控板捏合）
   pinZoomLevel(win.webContents);
@@ -446,6 +671,11 @@ app.on("window-all-closed", () => {
   }
 });
 
+// 任何路径触发的退出（Cmd+Q / 托盘退出 / app.quit）都放行 close 拦截
+app.on("before-quit", () => {
+  isQuitting = true;
+});
+
 app.on("activate", () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
@@ -455,6 +685,7 @@ app.on("activate", () => {
 });
 
 app.whenReady().then(() => {
+  closeAction = loadCloseAction();
   createWindow();
   // 自动检查更新：启动后延迟 3 秒（不阻塞启动），之后每 6 小时一次。
   // 仅提示（渲染层角标/弹层），不自动下载、不强制更新。

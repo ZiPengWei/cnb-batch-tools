@@ -111,3 +111,83 @@ describe("authStore 认证模式与持久化", () => {
     expect(localStorage.getItem(CNB_AUTH_STORAGE_KEY)).toBeNull();
   });
 });
+
+describe("authStore 静默重连（macOS 关窗重开/重启后恢复登录态）", () => {
+  it("Cookie 模式有已保存会话时 loadLocal 自动恢复连接", async () => {
+    localStorage.setItem(
+      CNB_AUTH_STORAGE_KEY,
+      JSON.stringify({
+        baseUrl: "https://cnb.cool",
+        token: "",
+        webCookie: "sessionid=abc",
+        mode: "cookie",
+        rememberToken: false,
+      }),
+    );
+    const store = useAuthStore();
+
+    await store.loadLocal();
+
+    expect(store.connected).toBe(true);
+    expect(store.userName).toBe("alice");
+    expect(store.mode).toBe("cookie");
+    const { setAuth } = await import("../src/renderer/ipc/bridge");
+    expect(vi.mocked(setAuth)).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "cookie", webCookie: "sessionid=abc" }),
+    );
+  });
+
+  it("令牌模式勾选记住令牌时 loadLocal 自动恢复连接", async () => {
+    localStorage.setItem(
+      CNB_AUTH_STORAGE_KEY,
+      JSON.stringify({
+        baseUrl: "https://api.cnb.cool",
+        token: "tk",
+        webCookie: "",
+        mode: "token",
+        rememberToken: true,
+      }),
+    );
+    const store = useAuthStore();
+
+    await store.loadLocal();
+
+    expect(store.connected).toBe(true);
+    expect(store.userName).toBe("alice");
+    const { setAuth } = await import("../src/renderer/ipc/bridge");
+    expect(vi.mocked(setAuth)).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "token", token: "tk" }),
+    );
+  });
+
+  it("凭证已失效时保持未连接且保留凭证供手动重试", async () => {
+    bridgeState.setAuthResult = { ok: false, error: { message: "401" } };
+    localStorage.setItem(
+      CNB_AUTH_STORAGE_KEY,
+      JSON.stringify({
+        baseUrl: "https://cnb.cool",
+        token: "",
+        webCookie: "sessionid=expired",
+        mode: "cookie",
+        rememberToken: false,
+      }),
+    );
+    const store = useAuthStore();
+
+    await store.loadLocal();
+
+    expect(store.connected).toBe(false);
+    expect(store.webCookie).toBe("sessionid=expired");
+    expect(store.busy).toBe(false);
+  });
+
+  it("无已保存凭证时不发起静默重连", async () => {
+    const store = useAuthStore();
+
+    await store.loadLocal();
+
+    expect(store.connected).toBe(false);
+    const { setAuth } = await import("../src/renderer/ipc/bridge");
+    expect(vi.mocked(setAuth)).not.toHaveBeenCalled();
+  });
+});

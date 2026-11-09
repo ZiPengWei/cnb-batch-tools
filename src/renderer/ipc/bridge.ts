@@ -89,6 +89,26 @@ export async function openExternal(url: string) {
   return invoke()("shell:open-external", url);
 }
 
+/** 当前平台标识（Electron preload 注入；非 Electron 环境返回空字符串） */
+export function getPlatform(): string {
+  return (window.ipcRenderer?.platform as string) || "";
+}
+
+// ---------- Windows 关闭行为设置 ----------
+
+/** 关闭窗口的默认行为：ask=每次询问 / tray=最小化到系统托盘 / exit=直接退出 */
+export type CloseAction = "ask" | "tray" | "exit";
+
+/** 读取已保存的关闭行为偏好 */
+export async function getCloseAction(): Promise<CloseAction> {
+  return invoke()("app:get-close-action") as Promise<CloseAction>;
+}
+
+/** 保存关闭行为偏好（Windows 设置项） */
+export async function setCloseAction(action: CloseAction): Promise<CloseAction> {
+  return invoke()("app:set-close-action", action) as Promise<CloseAction>;
+}
+
 // ---------- 应用更新检查 ----------
 
 export interface UpdateStatus {
