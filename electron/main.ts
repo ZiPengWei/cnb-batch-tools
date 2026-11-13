@@ -326,12 +326,21 @@ ipcMain.handle(
     _event: IpcMainInvokeEvent,
     payload: { repo: string }
   ): Promise<ListBranchesResponse> => {
-    // 分支按最新提交时间倒序（最近提交的在前），便于挑选活跃分支
-    const branches = await cnb.getBranchesSortedByCommitTime(payload.repo);
-    const names = branches
-      .map((b) => b.name)
-      .filter((x): x is string => Boolean(x));
-    return { branches: names };
+    // 分支按最新提交时间倒序（最近提交的在前），便于挑选活跃分支。
+    // 401/404 会在客户端内做会话/仓库可达性诊断并转换为友好提示，
+    // 这里以结构化 error 返回，避免 Electron 把错误包装成 invoke 前缀文案。
+    try {
+      const branches = await cnb.getBranchesFriendly(payload.repo);
+      const names = branches
+        .map((b) => b.name)
+        .filter((x): x is string => Boolean(x));
+      return { branches: names };
+    } catch (e) {
+      return {
+        branches: [],
+        error: e instanceof Error ? e.message : String(e),
+      };
+    }
   }
 );
 

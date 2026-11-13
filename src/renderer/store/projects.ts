@@ -283,6 +283,13 @@ export const useProjectsStore = defineStore("projects", {
           return;
         }
         const res = await listBranches({ repo: this.selectedRepo });
+        // 结构化错误（主进程已做会话/可达性诊断的友好提示），直接展示
+        if (res?.error) {
+          const friendly = `分支刷新失败：${res.error}`;
+          this.sourceBranchesError = friendly;
+          this.targetBranchesError = friendly;
+          return;
+        }
         const list = res.branches || [];
         this.sourceBranches = list;
         this.targetBranches = list;

@@ -26,6 +26,8 @@ export type ListProjectsResponse = {
 
 export type ListBranchesResponse = {
   branches: string[];
+  /** 非空表示加载失败，内容为面向用户的友好错误说明（已做过会话/可达性诊断） */
+  error?: string;
 };
 
 export type BatchMergeRequest = {

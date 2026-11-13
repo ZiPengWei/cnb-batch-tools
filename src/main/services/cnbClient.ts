@@ -187,6 +187,11 @@ export class CnbClient {
     return anyHttp.defaults.headers.common;
   }
 
+  /** 当前认证模式：有网页会话 Cookie 即 cookie 模式，否则为访问令牌模式 */
+  get authMode(): "cookie" | "token" {
+    return this.webCookie ? "cookie" : "token";
+  }
+
   /** 校验网页 Cookie 是否有效（GET https://cnb.cool/user） */
   async testWebCookie(
     cookie: string
@@ -332,6 +337,39 @@ export class CnbClient {
       if (!uniqueByName.has(name)) uniqueByName.set(name, b);
     }
     return Array.from(uniqueByName.values());
+  }
+
+  /**
+   * 获取分支（按最新提交时间倒序），并对 401/404 做可达性诊断后抛出友好错误。
+   *
+   * 背景：CNB 对“未登录/无权限的私有仓库”统一返回 404（不泄露存在性），
+   * 网页 Cookie 过期后分支请求会变成匿名请求 → 表现为 404 而非 401，
+   * 仓库列表（启动时加载的缓存）却看起来正常，用户难以定位。
+   * 诊断方式：用当前凭证再请求一次 GET /user —— 失败即凭证失效（提示重新登录）；
+   * 成功则说明会话有效，是该仓库不可达（改名/移动/删除/权限回收）。
+   */
+  async getBranchesFriendly(repo: string): Promise<CnbBranch[]> {
+    try {
+      return await this.getBranchesSortedByCommitTime(repo);
+    } catch (e) {
+      const err = extractErrorMessage(e);
+      if (err.status !== 401 && err.status !== 404) throw e;
+      const check = await this.verifyToken();
+      if (!check.ok) {
+        throw new Error(
+          this.authMode === "cookie"
+            ? "网页登录已过期，请点击「网页登录」重新登录"
+            : "访问令牌已失效，请重新配置认证"
+        );
+      }
+      if (err.status === 404) {
+        throw new Error(
+          "仓库不存在或无权限访问（可能已被改名/移动/删除），请刷新仓库列表后重试"
+        );
+      }
+      // 401 但会话仍有效：权限语义，保留原始错误
+      throw e;
+    }
   }
 
   /** 从提交对象中提取提交时间（毫秒）；字段缺失或解析失败返回 0 */
