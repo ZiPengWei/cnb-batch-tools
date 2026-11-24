@@ -149,6 +149,11 @@ export const useProjectsStore = defineStore("projects", {
       }
     },
 
+    /** 清空置顶同步错误提示（App 侧定时自动调用，也供手动关闭） */
+    clearPinError() {
+      this.pinError = "";
+    },
+
     /** 本地置顶簿记（pin=true 添加，false 移除），含持久化 */
     applyPinLocal(id: string, pin: boolean) {
       const serverPinned = this.items.some((i) => i.id === id && i.pinned);
@@ -302,6 +307,25 @@ export const useProjectsStore = defineStore("projects", {
         this.sourceBranchesLoading = false;
         this.targetBranchesLoading = false;
       }
+    },
+    /**
+     * 应用主进程后台计算完成的"按最新提交时间排序"分支列表。
+     * 快速路径已先返回名称序供立即选择；此处校验仓库匹配与加载态后平滑更新，
+     * 选择态（selectedSourceBranch / merge.selectedTargets）由各 store 保留。
+     */
+    applySortedBranches(repo: string, branches: string[]) {
+      if (isE2E) return;
+      if (!branches.length || repo !== this.selectedRepo) return;
+      if (this.sourceBranchesLoading || this.targetBranchesLoading) return;
+      const prev = this.sourceBranches;
+      if (
+        prev.length === branches.length &&
+        branches.every((b, i) => prev[i] === b)
+      ) {
+        return; // 顺序未变化，无需刷新
+      }
+      this.sourceBranches = branches.slice();
+      this.targetBranches = branches.slice();
     },
   },
 });

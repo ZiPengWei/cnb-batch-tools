@@ -12,11 +12,15 @@ const authStoreMock = {
   loggingIn: false,
   userName: "u",
   error: "",
+  expiredMessage: "",
   loadLocal: vi.fn(),
   connect: vi.fn(),
   loginViaWeb: vi.fn(),
   switchAccount: vi.fn(),
   logout: vi.fn(),
+  promptRelogin: vi.fn(),
+  dismissRelogin: vi.fn(),
+  confirmRelogin: vi.fn(),
 };
 
 const projectsStoreMock = reactive({
@@ -59,6 +63,11 @@ const mergeStoreMock = reactive({
   activeRunId: "",
   setTargets: vi.fn(),
   toggleTarget: vi.fn(),
+  setSelectedTargets: vi.fn(),
+  addSelectedTargets: vi.fn(),
+  clearTargets: vi.fn(),
+  persistCurrentTargets: vi.fn(),
+  notifyFinished: vi.fn(),
   log: vi.fn(function (this: any, text: string, error = false) {
     mergeStoreMock.logLines.push({ text: String(text ?? ""), error });
   }),
@@ -93,7 +102,10 @@ vi.mock("../src/renderer/ipc/bridge", () => {
     webLogin: vi.fn(),
     listProjects: vi.fn(),
     listBranches: vi.fn(),
+    onBranchesSorted: vi.fn(() => () => {}),
     openExternal: vi.fn(),
+    notify: vi.fn(async () => ({ ok: true })),
+    copyText: vi.fn(async () => ({ ok: true })),
     getPlatform: vi.fn(() => ""),
     getCloseAction: vi.fn(async () => "ask"),
     setCloseAction: vi.fn(async (action: string) => action),
@@ -101,6 +113,7 @@ vi.mock("../src/renderer/ipc/bridge", () => {
     getUpdateStatus: vi.fn(async () => null),
     checkForUpdate: vi.fn(),
     onUpdateStatus: vi.fn(() => () => {}),
+    onAuthExpired: vi.fn(() => () => {}),
   };
 });
 
@@ -497,4 +510,266 @@ describe("BatchMergeFinishDialog 结果明细", () => {
 
     wrapper.unmount();
   });
+});
+
+describe("App 键盘流", () => {
+  it("源分支列表 ↑/↓ 移动高亮、Enter 选择；目标分支列表空格勾选", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    projectsStoreMock.sourceBranches = ["feat", "fix", "dev"];
+    projectsStoreMock.selectedSourceBranch = "";
+    mergeStoreMock.targets = ["dev", "main"];
+    mergeStoreMock.selectedTargets = [];
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const srcList = wrapper.find('[aria-label="源分支列表"]');
+    expect(srcList.exists()).toBe(true);
+
+    // ArrowDown 两次：高亮第二项 fix
+    await srcList.trigger("keydown", { key: "ArrowDown" });
+    await srcList.trigger("keydown", { key: "ArrowDown" });
+    const kbdBtns = document.body.querySelectorAll(
+      '[aria-label="源分支列表"] .gl-kbd-active',
+    );
+    expect(kbdBtns.length).toBe(1);
+    expect(kbdBtns[0].getAttribute("data-item-key")).toBe("fix");
+
+    // Enter 选中源分支
+    await srcList.trigger("keydown", { key: "Enter" });
+    expect(projectsStoreMock.selectedSourceBranch).toBe("fix");
+
+    // 目标分支列表：ArrowDown 定位首项，空格勾选
+    const tgtList = wrapper.find('[aria-label="目标分支列表"]');
+    await tgtList.trigger("keydown", { key: "ArrowDown" });
+    await tgtList.trigger("keydown", { key: " " });
+    expect(mergeStoreMock.toggleTarget).toHaveBeenCalledWith("dev");
+
+    wrapper.unmount();
+  }, 30_000);
+
+  it("与源分支相同的目标分支行禁用，全选当前时跳过", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    projectsStoreMock.sourceBranches = ["dev", "feat"];
+    projectsStoreMock.selectedSourceBranch = "dev";
+    projectsStoreMock.targetBranches = ["dev", "test"];
+    mergeStoreMock.targets = ["dev", "test"];
+    mergeStoreMock.selectedTargets = [];
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const devBtn = document.body.querySelector(
+      '[aria-label="目标分支列表"] [data-item-key="dev"]',
+    ) as HTMLButtonElement | null;
+    expect(devBtn).toBeTruthy();
+    expect(devBtn!.disabled).toBe(true);
+    expect(devBtn!.getAttribute("title")).toBe("与源分支相同，无需合并");
+
+    // 全选当前不包含 dev
+    const selectAllBtn = Array.from(
+      document.body.querySelectorAll("button"),
+    ).find((b) => (b.textContent || "").trim() === "全选当前");
+    (selectAllBtn as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mergeStoreMock.addSelectedTargets).toHaveBeenCalledWith(["test"]);
+
+    wrapper.unmount();
+  }, 30_000);
+});
+
+describe("App 过滤防抖与 Shift 区间多选", () => {
+  it("目标分支 Shift 点击从锚点到当前项区间全选", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    projectsStoreMock.sourceBranches = ["dev"];
+    projectsStoreMock.selectedSourceBranch = "dev";
+    projectsStoreMock.targetBranches = ["a", "b", "c", "d"];
+    mergeStoreMock.targets = ["a", "b", "c", "d"];
+    mergeStoreMock.selectedTargets = [];
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const clickRow = (key: string, shift = false) => {
+      const btn = document.body.querySelector(
+        `[aria-label="目标分支列表"] [data-item-key="${key}"]`,
+      ) as HTMLButtonElement;
+      btn.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, shiftKey: shift }),
+      );
+    };
+
+    // 普通点击 a：单选切换，并记录为区间锚点
+    clickRow("a");
+    expect(mergeStoreMock.toggleTarget).toHaveBeenCalledWith("a");
+
+    // Shift 点击 c：区间 [a, b, c] 全选
+    clickRow("c", true);
+    expect(mergeStoreMock.addSelectedTargets).toHaveBeenCalledWith([
+      "a",
+      "b",
+      "c",
+    ]);
+
+    wrapper.unmount();
+  }, 30_000);
+
+  it("切换仓库时清空源/目标分支过滤词（仓库过滤词保留）", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    projectsStoreMock.sourceBranches = ["dev", "release/1", "release/2"];
+    projectsStoreMock.targetBranches = ["dev", "release/1", "release/2"];
+    mergeStoreMock.targets = ["dev", "release/1", "release/2"];
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    // 三个列表各自的过滤输入框（在对应卡片内部，避开认证卡里的令牌输入框）
+    const cardInput = (label: string) => {
+      const list = document.body.querySelector(`[aria-label="${label}"]`);
+      const card = list?.closest(".n-card");
+      return card?.querySelector<HTMLInputElement>(
+        "input.n-input__input-el",
+      ) as HTMLInputElement;
+    };
+    const repoInput = cardInput("项目列表");
+    const srcInput = cardInput("源分支列表");
+    const tgtInput = cardInput("目标分支列表");
+    expect(repoInput).toBeTruthy();
+    expect(srcInput).toBeTruthy();
+    expect(tgtInput).toBeTruthy();
+
+    const setValue = (el: HTMLInputElement, v: string) => {
+      el.value = v;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    setValue(repoInput, "org/");
+    setValue(srcInput, "release");
+    setValue(tgtInput, "release");
+    // 等防抖生效
+    await new Promise((r) => setTimeout(r, 200));
+    // 分支列表被过滤
+    expect(
+      document.body.querySelectorAll('[aria-label="源分支列表"] button').length,
+    ).toBe(2);
+
+    // 切换仓库：分支过滤词立即清空，仓库过滤词保留
+    projectsStoreMock.selectedRepo = "org/other";
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(srcInput.value).toBe("");
+    expect(tgtInput.value).toBe("");
+    expect(repoInput.value).toBe("org/");
+    // 分支列表恢复全量显示
+    expect(
+      document.body.querySelectorAll('[aria-label="源分支列表"] button').length,
+    ).toBe(3);
+
+    wrapper.unmount();
+  }, 30_000);
+});
+
+describe("App 快捷键 / 窗口标题 / 仓库网页入口", () => {
+  it("目标列表 Ctrl/Cmd+A 全选当前（排除同源禁用行）", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    projectsStoreMock.sourceBranches = ["dev"];
+    projectsStoreMock.selectedSourceBranch = "dev";
+    projectsStoreMock.targetBranches = ["dev", "test", "gray"];
+    mergeStoreMock.targets = ["dev", "test", "gray"];
+    mergeStoreMock.selectedTargets = [];
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const tgtList = wrapper.find('[aria-label="目标分支列表"]');
+    await tgtList.trigger("keydown", { key: "a", ctrlKey: true });
+
+    expect(mergeStoreMock.addSelectedTargets).toHaveBeenCalledWith([
+      "test",
+      "gray",
+    ]);
+
+    wrapper.unmount();
+  }, 30_000);
+
+  it("Ctrl/Cmd+F 聚焦仓库过滤输入框", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true }),
+    );
+    await new Promise((r) => setTimeout(r, 0));
+
+    const active = document.activeElement;
+    expect(active?.classList.contains("n-input__input-el")).toBe(true);
+    const repoCard = active
+      ?.closest(".n-card")
+      ?.querySelector('[aria-label="项目列表"]');
+    expect(repoCard).toBeTruthy();
+
+    wrapper.unmount();
+  }, 30_000);
+
+  it("窗口标题跟随当前仓库/源分支/目标数量", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    // beforeEach 预置了选中仓库/分支，这里先清空再验证默认标题
+    projectsStoreMock.selectedRepo = "";
+    projectsStoreMock.selectedSourceBranch = "";
+    mergeStoreMock.selectedTargets = [];
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(document.title).toBe("CNB 批量合并工具");
+
+    projectsStoreMock.selectedRepo = "org/demo";
+    projectsStoreMock.selectedSourceBranch = "feat";
+    mergeStoreMock.selectedTargets = ["dev", "test"];
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(document.title).toBe("org/demo · feat → 2 个目标");
+    wrapper.unmount();
+  }, 30_000);
+
+  it("仓库行 ↗ 按钮用浏览器打开仓库网页", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    projectsStoreMock.items = [
+      { id: "org/demo", display: "org/demo", search: "org/demo", pinyinFull: "", pinyinInitials: "" },
+    ];
+    projectsStoreMock.selectedRepo = "org/demo";
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const btn = document.body.querySelector(
+      '[aria-label="在浏览器打开仓库 org/demo"]',
+    ) as HTMLElement | null;
+    expect(btn).toBeTruthy();
+    btn!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+
+    const { openExternal } = await import("../src/renderer/ipc/bridge");
+    expect(vi.mocked(openExternal)).toHaveBeenCalledWith(
+      "https://cnb.cool/org/demo",
+    );
+
+    wrapper.unmount();
+  }, 30_000);
 });

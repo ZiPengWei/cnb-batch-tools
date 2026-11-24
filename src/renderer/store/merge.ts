@@ -1,9 +1,88 @@
 import { acceptHMRUpdate, defineStore } from "pinia";
-import { batchMerge, onBatchMergeLog } from "../ipc/bridge";
+import { batchMerge, notify, onBatchMergeLog, setMergeRunning } from "../ipc/bridge";
+import { useProjectsStore } from "./projects";
 
 const isE2E =
   (import.meta as any).env?.VITE_E2E === "1" ||
   String((import.meta as any).env?.MODE || "").toLowerCase() === "e2e";
+
+/** 按仓库记忆目标分支选择的持久化 key（LRU 上限内保留最近使用的仓库） */
+const REPO_TARGETS_KEY = "cnb-repo-targets";
+const REPO_TARGETS_CAP = 100;
+
+/** 合并历史记录（本地持久化，最近在前） */
+export type MergeHistoryEntry = {
+  ts: number;
+  repo: string;
+  /** 源分支（当前 UI 单源，多个时以"、"连接） */
+  source: string;
+  targets: string[];
+  ok: boolean;
+  merged: number;
+  conflicts: number;
+  failures: number;
+  noop: number;
+  message?: string;
+};
+
+const MERGE_HISTORY_KEY = "cnb-merge-history";
+const MERGE_HISTORY_CAP = 20;
+
+function readMergeHistory(): MergeHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(MERGE_HISTORY_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr)
+      ? arr.filter(
+          (x): x is MergeHistoryEntry =>
+            x && typeof x === "object" && typeof x.ts === "number",
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/** 相对时间文案：刚刚 / N 分钟前 / N 小时前 / N 天前 / 具体日期 */
+export function formatRelativeTime(ts: number, now = Date.now()): string {
+  const diff = Math.max(0, now - ts);
+  const MIN = 60_000;
+  const HOUR = 3_600_000;
+  const DAY = 86_400_000;
+  if (diff < MIN) return "刚刚";
+  if (diff < HOUR) return `${Math.floor(diff / MIN)} 分钟前`;
+  if (diff < DAY) return `${Math.floor(diff / HOUR)} 小时前`;
+  if (diff < 30 * DAY) return `${Math.floor(diff / DAY)} 天前`;
+  return new Date(ts).toLocaleDateString("zh-CN");
+}
+
+function readRepoTargets(): Record<string, string[]> {
+  try {
+    const raw = localStorage.getItem(REPO_TARGETS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveRepoTargets(repo: string, targets: string[]) {
+  try {
+    const all = readRepoTargets();
+    // 先删再写，保持 LRU 顺序（最近使用的仓库排在最后，超限时从最旧开始淘汰）
+    delete all[repo];
+    const keys = Object.keys(all);
+    if (keys.length >= REPO_TARGETS_CAP) {
+      for (const k of keys.slice(0, keys.length - REPO_TARGETS_CAP + 1)) {
+        delete all[k];
+      }
+    }
+    all[repo] = targets;
+    localStorage.setItem(REPO_TARGETS_KEY, JSON.stringify(all));
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
  * 批量合并结果摘要（分支级明细）
@@ -14,10 +93,20 @@ const isE2E =
  */
 export type MergeRunSummary = {
   ok: boolean;
-  merged: Array<{ source: string; target: string }>;
-  conflicts: Array<{ source: string; target: string; reason?: string }>;
+  merged: Array<{ source: string; target: string; prNumber?: string }>;
+  conflicts: Array<{
+    source: string;
+    target: string;
+    reason?: string;
+    prNumber?: string;
+  }>;
   noop: Array<{ source: string; target: string; reason?: string }>;
-  failures: Array<{ source: string; target: string; reason?: string }>;
+  failures: Array<{
+    source: string;
+    target: string;
+    reason?: string;
+    prNumber?: string;
+  }>;
   message?: string;
 };
 
@@ -45,11 +134,56 @@ export const useMergeStore = defineStore("merge", {
     logLines: [] as MergeLogLine[],
     running: false,
     activeRunId: "",
+    /** 合并历史（本地持久化，最近在前） */
+    history: readMergeHistory(),
   }),
+  getters: {
+    /** 指定仓库的最近一次合并记录（无记录返回 null） */
+    lastRunFor(state) {
+      return (repo: string): MergeHistoryEntry | null =>
+        state.history.find((h) => h.repo === repo) || null;
+    },
+  },
   actions: {
+    /**
+     * 更新目标分支候选列表。
+     * - 分支集合未变（仅顺序变化，如后台提交时间排序完成）→ 保留当前选择；
+     * - 分支集合变化（切换仓库/刷新）→ 恢复该仓库上次保存的目标分支选择
+     *   （过滤已不存在的分支），省去重复勾选。
+     */
     setTargets(branches: string[]) {
-      this.targets = branches.slice();
+      const next = branches.slice();
+      const prevSet = new Set(this.targets);
+      const sameSet =
+        prevSet.size === next.length && next.every((b) => prevSet.has(b));
+      this.targets = next;
+      const nextSet = new Set(next);
+      if (sameSet) {
+        this.selectedTargets = this.selectedTargets.filter((t) =>
+          nextSet.has(t)
+        );
+        return;
+      }
+      const repo = useProjectsStore().selectedRepo;
+      const saved = readRepoTargets()[repo] || [];
+      this.selectedTargets = saved.filter((t) => nextSet.has(t));
+    },
+    /** 覆盖式设置目标分支选择 */
+    setSelectedTargets(list: string[]) {
+      this.selectedTargets = [...new Set(list)];
+      this.persistCurrentTargets();
+    },
+    /** 并集式追加目标分支选择（全选当前） */
+    addSelectedTargets(list: string[]) {
+      this.selectedTargets = [
+        ...new Set([...this.selectedTargets, ...list]),
+      ];
+      this.persistCurrentTargets();
+    },
+    /** 清空目标分支选择 */
+    clearTargets() {
       this.selectedTargets = [];
+      this.persistCurrentTargets();
     },
     toggleTarget(name: string) {
       if (this.selectedTargets.includes(name)) {
@@ -57,6 +191,16 @@ export const useMergeStore = defineStore("merge", {
       } else {
         this.selectedTargets = [...this.selectedTargets, name];
       }
+      this.persistCurrentTargets();
+    },
+    /**
+     * 按仓库持久化当前目标分支选择（分支列表已加载时才写，
+     * 避免切换仓库的瞬时空态覆盖已有记忆）。
+     */
+    persistCurrentTargets() {
+      const repo = useProjectsStore().selectedRepo;
+      if (!repo || !this.targets.length) return;
+      saveRepoTargets(repo, this.selectedTargets);
     },
     log(text: string, error = false) {
       const ts = Date.now();
@@ -64,6 +208,72 @@ export const useMergeStore = defineStore("merge", {
       this.logLines.push({ ts, text: norm, error });
       if (this.logLines.length > MAX_RAW_LOG_LINES) {
         this.logLines.splice(0, this.logLines.length - MAX_RAW_LOG_LINES);
+      }
+    },
+    /** 记录一次合并（最近在前，超限淘汰最旧） */
+    recordRun(entry: MergeHistoryEntry) {
+      this.history = [entry, ...this.history].slice(0, MERGE_HISTORY_CAP);
+      try {
+        localStorage.setItem(MERGE_HISTORY_KEY, JSON.stringify(this.history));
+      } catch {
+        /* ignore */
+      }
+    },
+    /** 把本次运行写入合并历史 */
+    recordCurrentRun(
+      repo: string,
+      sourceBranches: string[],
+      summary: MergeRunSummary,
+    ) {
+      this.recordRun({
+        ts: Date.now(),
+        repo,
+        source: sourceBranches.join("、"),
+        targets: [...this.selectedTargets],
+        ok: summary.ok,
+        merged: summary.merged.length,
+        conflicts: summary.conflicts.length,
+        failures: summary.failures.length,
+        noop: summary.noop.length,
+        ...(summary.message ? { message: summary.message } : {}),
+      });
+    },
+    /**
+     * 同步合并运行状态到主进程（合并中的退出保护）。
+     * 非 Electron 环境 / E2E 下静默跳过。
+     */
+    async syncMergeRunning(running: boolean) {
+      if (isE2E) return;
+      try {
+        await setMergeRunning(running);
+      } catch {
+        /* 非 Electron 环境忽略 */
+      }
+    },
+    /**
+     * 合并完成系统通知（长批量时用户常切走，完成后提醒；点击通知唤起主窗口）。
+     * 主窗口聚焦时主进程会跳过（用户正在看结果弹窗）；E2E 与通知失败静默跳过。
+     */
+    async notifyFinished(summary: MergeRunSummary) {
+      if (isE2E) return;
+      try {
+        const parts = [
+          `成功 ${summary.merged.length}`,
+          `冲突 ${summary.conflicts.length}`,
+          `失败 ${summary.failures.length}`,
+          `无变更 ${summary.noop.length}`,
+        ];
+        let body = parts.join(" · ");
+        if (!summary.ok && summary.message) {
+          body = `${body}（${summary.message.slice(0, 120)}）`;
+        }
+        const repo = useProjectsStore().selectedProjectName || "";
+        await notify({
+          title: `批量合并完成${repo ? `：${repo}` : ""}`,
+          body,
+        });
+      } catch {
+        /* 通知失败不影响主流程 */
       }
     },
     async run(
@@ -121,6 +331,7 @@ export const useMergeStore = defineStore("merge", {
         runId,
       };
 
+      void this.syncMergeRunning(true);
       let stopListen: (() => void) | null = null;
       try {
         stopListen = onBatchMergeLog((e) => {
@@ -170,11 +381,13 @@ export const useMergeStore = defineStore("merge", {
           if (summary.noop.length)
             this.log(`已跳过无变更：${summary.noop.length} 项`);
         }
+        void this.notifyFinished(summary);
+        this.recordCurrentRun(repo, sourceBranches, summary);
         return summary;
       } catch (e) {
         const msg = String(e);
         this.log(msg, true);
-        return {
+        const summary: MergeRunSummary = {
           ok: false,
           merged: [],
           conflicts: [],
@@ -182,10 +395,14 @@ export const useMergeStore = defineStore("merge", {
           failures: [],
           message: msg,
         };
+        void this.notifyFinished(summary);
+        this.recordCurrentRun(repo, sourceBranches, summary);
+        return summary;
       } finally {
         stopListen?.();
         this.running = false;
         this.activeRunId = "";
+        void this.syncMergeRunning(false);
       }
     },
   },

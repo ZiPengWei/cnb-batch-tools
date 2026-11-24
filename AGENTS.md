@@ -30,7 +30,8 @@
 
 - `electron/main.ts`
   - 负责 Electron 应用与窗口生命周期。
-  - 注册全部 IPC 处理器（`cnb:*` 前缀与 `shell:open-external`）。
+  - 注册全部 IPC 处理器（`cnb:*` 与 `app:*` 前缀、`shell:open-external`）。
+  - 合并进行中（`app:set-merge-running` 同步）时拦截退出：Windows 关窗先询问，Cmd+Q 等 before-quit 路径先确认。
   - 实例化主进程服务：`CnbClient`、`MergeService`。
 - `electron/preload.ts`
   - 向渲染进程暴露一个最小化的 `window.ipcRenderer` 桥接层。
@@ -45,10 +46,13 @@
 
 - `src/App.vue`
   - 主界面外壳，负责认证、仓库选择、源分支选择、目标分支选择以及对话框流程编排。
+  - 三列列表的过滤输入统一用 `FilterInput` 组件（内部即时回显、对外防抖发值）：1200 仓库 / 900 分支全量渲染下，过滤按键不应触发 App 整体重渲染，新增输入类交互时沿用该组件。
+  - 深色模式跟随系统：`matchMedia(prefers-color-scheme: dark)` 驱动 naive `darkTheme`。注意 App.vue 是 `n-config-provider` 的父级，其 `useThemeVars` 注入不到自身（始终是浅色默认值）——内联样式取主题变量时用 `isDark ? darkTheme.common : themeVars`，新增样式沿用该模式。
+  - 注意 App.vue 是 n-config-provider 的父级这一结构是历史决定，若后续重构应把内容下沉为 provider 的子组件，让 `useThemeVars` 正常注入。
 - Pinia stores 承担大部分渲染层状态：
-  - `src/renderer/store/auth.ts` — CNB 认证（网页登录 Cookie / 访问令牌双模式，可切换账号、退出登录），本地持久化设置（localStorage key `cnb-auth`）、E2E 认证绕过。
-  - `src/renderer/store/projects.ts` — 仓库列表、分支列表与选择状态（仓库以完整路径字符串 `org/repo` 标识，存于 `selectedRepo`），含仓库置顶状态与服务端双向同步。
-  - `src/renderer/store/merge.ts` — 目标分支选择、批量合并运行状态、流式日志与分支级结果摘要。
+  - `src/renderer/store/auth.ts` — CNB 认证（网页登录 Cookie / 访问令牌双模式，可切换账号、退出登录），本地持久化设置（localStorage key `cnb-auth`）、E2E 认证绕过；登录过期时经 `cnb:auth-expired` 事件弹出"是否重新登录"确认框，同意后自动弹出 CNB 登录窗口（`confirmRelogin` → 强制全新网页登录）。
+  - `src/renderer/store/projects.ts` — 仓库列表、分支列表与选择状态（仓库以完整路径字符串 `org/repo` 标识，存于 `selectedRepo`），含仓库置顶状态与服务端双向同步；分支走"快速路径 + 后台排序"两段加载，`applySortedBranches` 接收主进程 `cnb:branches-sorted` 推送平滑更新。
+  - `src/renderer/store/merge.ts` — 目标分支选择（按仓库记忆上次选择并持久化，切换仓库自动恢复；分支集合仅顺序变化时保留当前选择）、批量合并运行状态、流式日志、完成后系统通知（主窗口聚焦时跳过）、合并历史记录（localStorage key `cnb-merge-history`，最近 20 次，确认弹窗展示当前仓库的上次合并与最近记录）。
 - 共享类型位于：
   - `src/shared/cnb/types.ts`
   - `src/renderer/ipc/types.ts`
@@ -58,9 +62,10 @@
 - `src/main/services/cnbClient.ts`
   - CNB Open API（https://api.cnb.cool/）HTTP 访问的唯一入口。
   - 认证方式：令牌模式用 `Authorization: Bearer <token>`；网页登录模式用 Cookie 会话（`setCookieAuth` 注入，置顶写回必须走 Cookie）。
-  - 封装：用户信息（`GET /user`）、仓库列表（`GET /user/repos?role=Developer`，分页，含 `pinned`/`pinned_time`）、分支列表（含按提交时间排序变体 `getBranchesSortedByCommitTime`）、分支比较（无变更预检）、PR 的创建/查询/合并/关闭（按源+目标查找已存在 open PR）、仓库置顶写回（`setRepoPinned`，走 `cnb.cool/user/dashboard/pinned-stars/` 网页接口）。
+  - 封装：用户信息（`GET /user`）、仓库列表（`GET /user/repos?role=Developer`，分页，含 `pinned`/`pinned_time`）、分支列表（`getBranchesFriendly` 为快速路径仅拉列表，按提交时间排序由 `getBranchesSortedByCommitTime` 后台完成）、分支比较（无变更预检）、PR 的创建/查询/合并/关闭（按源+目标查找已存在 open PR）、仓库置顶写回（`setRepoPinned`，走 `cnb.cool/user/dashboard/pinned-stars/` 网页接口）。
   - 仓库路径会逐段 URL 编码（支持多级组织 `a/b/c`）。
   - 内含重试/退避逻辑（429/5xx）；axios 实例统一 `Accept: application/json` 头与 `proxy: false`，勿移除。
+  - 登录过期探测：响应拦截器捕获业务请求 401 → 延迟复核 `GET /user`，确认失效触发 `onAuthExpired`（一次过期只触发一次，set-auth 成功后重置）；带 `_authVerify` 标记的凭证校验请求自身 401 不触发（手动连接/静默重连属正常业务错误）。`getBranchesFriendly` 的权威诊断（/user 复核失败）也会直接触发。
 - `src/main/services/updateChecker.ts`
   - 检查 GitHub `releases/latest` 是否有新版本（语义化版本比较；直连失败后走环境代理重试）。
   - 主进程启动 3 秒后首次检查，之后每 6 小时一次；结果经 `cnb:update-status` 推送渲染层，仅提示不强制更新。
@@ -85,7 +90,7 @@
 2. `src/renderer/ipc/bridge.ts` 发起 IPC 调用（`cnb:*`）。
 3. `electron/main.ts` 将请求分发到主进程服务。
 4. 服务调用 CNB Open API。
-5. 主进程将进度事件（`cnb:batch-merge-log`）回传给渲染进程。
+5. 主进程将进度事件（`cnb:batch-merge-log`）回传给渲染进程。另有主动推送：`cnb:branches-sorted`（后台分支排序完成）、`cnb:auth-expired`（登录过期）、`cnb:update-status`（更新检查）。
 6. 渲染进程中的 store / 组件更新 UI（确认弹窗实时日志、结果弹窗分支明细）。
 
 ## 测试与 E2E 行为

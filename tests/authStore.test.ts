@@ -190,4 +190,108 @@ describe("authStore 静默重连（macOS 关窗重开/重启后恢复登录态�
     const { setAuth } = await import("../src/renderer/ipc/bridge");
     expect(vi.mocked(setAuth)).not.toHaveBeenCalled();
   });
+
+  it("静默重连返回 401（凭证失效）时弹出重新登录提示", async () => {
+    bridgeState.setAuthResult = {
+      ok: false,
+      error: { status: 401, message: "Unauthorized" },
+    };
+    localStorage.setItem(
+      CNB_AUTH_STORAGE_KEY,
+      JSON.stringify({
+        baseUrl: "https://cnb.cool",
+        token: "",
+        webCookie: "sessionid=expired",
+        mode: "cookie",
+        rememberToken: false,
+      }),
+    );
+    const store = useAuthStore();
+
+    await store.loadLocal();
+
+    expect(store.connected).toBe(false);
+    expect(store.expiredMessage).toBe("保存的登录已过期");
+    expect(store.busy).toBe(false);
+  });
+
+  it("静默重连网络失败（无 status）时不弹过期提示", async () => {
+    bridgeState.setAuthResult = {
+      ok: false,
+      error: { status: 0, message: "Network Error" },
+    };
+    localStorage.setItem(
+      CNB_AUTH_STORAGE_KEY,
+      JSON.stringify({
+        baseUrl: "https://cnb.cool",
+        token: "",
+        webCookie: "sessionid=abc",
+        mode: "cookie",
+        rememberToken: false,
+      }),
+    );
+    const store = useAuthStore();
+
+    await store.loadLocal();
+
+    expect(store.connected).toBe(false);
+    expect(store.expiredMessage).toBe("");
+  });
+});
+
+describe("authStore 登录过期弹窗（是否重新登录）", () => {
+  it("promptRelogin 记录过期文案；已有文案时忽略重复通知", () => {
+    const store = useAuthStore();
+    store.promptRelogin("网页登录会话已过期");
+    expect(store.expiredMessage).toBe("网页登录会话已过期");
+
+    store.promptRelogin("另一条过期通知");
+    expect(store.expiredMessage).toBe("网页登录会话已过期");
+  });
+
+  it("无入参时按认证模式给出默认文案", () => {
+    const store = useAuthStore();
+    store.mode = "token";
+    store.promptRelogin();
+    expect(store.expiredMessage).toBe("访问令牌已失效");
+  });
+
+  it("正在登录或连接流程中忽略过期通知", () => {
+    const store = useAuthStore();
+    store.loggingIn = true;
+    store.promptRelogin("网页登录会话已过期");
+    expect(store.expiredMessage).toBe("");
+
+    store.loggingIn = false;
+    store.busy = true;
+    store.promptRelogin("网页登录会话已过期");
+    expect(store.expiredMessage).toBe("");
+  });
+
+  it("dismissRelogin 关闭弹窗", () => {
+    const store = useAuthStore();
+    store.promptRelogin("网页登录会话已过期");
+    store.dismissRelogin();
+    expect(store.expiredMessage).toBe("");
+  });
+
+  it("confirmRelogin 关闭弹窗并强制全新网页登录（自动弹出登录窗口）", async () => {
+    const store = useAuthStore();
+    store.promptRelogin("网页登录会话已过期");
+
+    await store.confirmRelogin();
+
+    expect(store.expiredMessage).toBe("");
+    const { webLogin } = await import("../src/renderer/ipc/bridge");
+    expect(vi.mocked(webLogin)).toHaveBeenCalledWith({ forceFresh: true });
+    expect(store.connected).toBe(true);
+    expect(store.mode).toBe("cookie");
+  });
+
+  it("重新登录成功后清空过期提示", async () => {
+    const store = useAuthStore();
+    store.promptRelogin("网页登录会话已过期");
+    await store.loginViaWeb();
+    expect(store.expiredMessage).toBe("");
+  });
 });

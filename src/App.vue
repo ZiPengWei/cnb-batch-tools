@@ -1,5 +1,5 @@
 <template>
-  <n-config-provider>
+  <n-config-provider :theme="isDark ? darkTheme : undefined">
     <n-global-style />
     <n-message-provider>
       <n-dialog-provider>
@@ -298,12 +298,11 @@
                       </n-button>
                     </template>
                     <div :style="styles.fill">
-                      <n-input
-                        v-model:value="projects.filter"
-                        clearable
+                      <FilterInput
+                        ref="repoFilterRef"
+                        v-model="projects.filter"
                         :disabled="!canUseContent"
                         placeholder="过滤仓库..."
-                        @update:value="projects.setFilter"
                       />
                       <n-text
                         v-if="projects.pinError"
@@ -315,6 +314,8 @@
                       <div
                         aria-label="项目列表"
                         :style="styles.scrollArea"
+                        tabindex="0"
+                        @keydown="onListKeydown('repo', $event)"
                       >
                         <div :style="styles.scrollInner">
                           <div
@@ -325,7 +326,7 @@
                               v-for="p in projects.sortedItems"
                               :key="p.id"
                               block
-                              :class="'gl-list-item'"
+                              :class="['gl-list-item', kbd.repo === String(p.id) ? 'gl-kbd-active' : '']"
                               :data-item-key="String(p.id)"
                               :data-selected="projects.selectedRepo === p.id ? 'true' : 'false'"
                               :style="styles.listItemButton"
@@ -352,6 +353,18 @@
                               >
                                 📌
                               </span>
+                              <span
+                                :aria-label="`在浏览器打开仓库 ${p.display}`"
+                                class="pin-btn web-btn"
+                                role="button"
+                                :style="styles.pinBtn"
+                                tabindex="0"
+                                title="在浏览器打开仓库"
+                                @click.stop="openRepoInBrowser(p)"
+                                @keydown.enter.stop.prevent="openRepoInBrowser(p)"
+                              >
+                                ↗
+                              </span>
                             </n-button>
                           </div>
                           <div
@@ -367,6 +380,20 @@
                                 加载中...
                               </n-text>
                             </template>
+                            <div
+                              v-else-if="projects.error"
+                              :style="styles.emptyFill"
+                            >
+                              <n-text type="error">
+                                {{ projects.error }}
+                              </n-text>
+                              <n-button
+                                :disabled="!canUseContent"
+                                @click="projects.loadProjects()"
+                              >
+                                重试
+                              </n-button>
+                            </div>
                             <n-empty
                               v-else
                               :description="projects.items.length ? '无匹配项目' : '暂无数据'"
@@ -401,15 +428,16 @@
                       </n-button>
                     </template>
                     <div :style="styles.fill">
-                      <n-input
-                        v-model:value="sourceFilter"
-                        clearable
+                      <FilterInput
+                        v-model="sourceFilter"
                         :disabled="!projects.selectedRepo || projects.sourceBranchesLoading"
                         placeholder="过滤源分支..."
                       />
                       <div
                         aria-label="源分支列表"
                         :style="styles.scrollArea"
+                        tabindex="0"
+                        @keydown="onListKeydown('source', $event)"
                       >
                         <div :style="styles.scrollInner">
                           <div
@@ -420,7 +448,7 @@
                               v-for="b in displaySourceBranches"
                               :key="b"
                               block
-                              :class="'gl-list-item'"
+                              :class="['gl-list-item', kbd.source === b ? 'gl-kbd-active' : '']"
                               :data-item-key="b"
                               :data-selected="projects.selectedSourceBranch === b ? 'true' : 'false'"
                               :style="styles.listItemButton"
@@ -452,6 +480,12 @@
                               <n-text type="error">
                                 {{ projects.sourceBranchesError }}
                               </n-text>
+                              <n-button
+                                :disabled="!projects.selectedRepo"
+                                @click="projects.loadAllBranches()"
+                              >
+                                重试
+                              </n-button>
                             </div>
                             <n-empty
                               v-else
@@ -489,21 +523,22 @@
                         <n-button
                           :disabled="!merge.selectedTargets.length"
                           text
-                          @click="merge.selectedTargets = []"
+                          @click="merge.clearTargets()"
                         >
                           清空
                         </n-button>
                       </n-space>
                     </template>
                     <div :style="styles.fill">
-                      <n-input
-                        v-model:value="merge.targetFilter"
-                        clearable
+                      <FilterInput
+                        v-model="merge.targetFilter"
                         placeholder="过滤目标分支..."
                       />
                       <div
                         aria-label="目标分支列表"
                         :style="styles.scrollArea"
+                        tabindex="0"
+                        @keydown="onListKeydown('target', $event)"
                       >
                         <div :style="styles.scrollInner">
                           <div
@@ -522,30 +557,29 @@
                                 v-else
                                 :aria-pressed="merge.selectedTargets.includes(row.name)"
                                 block
-                                :class="'gl-list-item'"
+                                :class="['gl-list-item', kbd.target === row.name ? 'gl-kbd-active' : '']"
                                 :data-item-key="row.name"
                                 :data-selected="merge.selectedTargets.includes(row.name) ? 'true' : 'false'"
+                                :disabled="row.name === projects.selectedSourceBranch"
                                 :style="styles.listItemButton"
                                 text
-                                :title="row.name"
+                                :title="row.name === projects.selectedSourceBranch ? '与源分支相同，无需合并' : row.name"
                                 :type="merge.selectedTargets.includes(row.name) ? 'primary' : 'default'"
                                 @click="onClickTargetRow(row.name, $event)"
                               >
-                                <template #icon>
-                                  <span
-                                    v-if="merge.selectedTargets.includes(row.name)"
-                                    :style="styles.checkIcon"
-                                  >✓</span>
-                                  <span
-                                    v-else-if="row.isCore"
-                                    :style="styles.starIcon"
-                                    title="核心环境分支"
-                                  >★</span>
-                                  <span
-                                    v-else
-                                    :style="styles.checkIcon"
-                                  >+</span>
-                                </template>
+                                <span
+                                  v-if="merge.selectedTargets.includes(row.name)"
+                                  :style="styles.checkIcon"
+                                >✓</span>
+                                <span
+                                  v-else-if="row.isCore"
+                                  :style="styles.starIcon"
+                                  title="核心环境分支"
+                                >★</span>
+                                <span
+                                  v-else
+                                  :style="styles.checkIcon"
+                                >+</span>
                                 <span class="gl-ellipsis-1">{{ row.name }}</span>
                               </n-button>
                             </template>
@@ -570,6 +604,12 @@
                               <n-text type="error">
                                 {{ projects.targetBranchesError }}
                               </n-text>
+                              <n-button
+                                :disabled="!projects.selectedRepo"
+                                @click="projects.loadAllBranches()"
+                              >
+                                重试
+                              </n-button>
                             </div>
                             <n-empty
                               v-else
@@ -631,6 +671,39 @@
             <BatchMergeFlowDialog
               ref="batchMergeFlowDialogRef"
             />
+
+            <n-modal
+              :show="!!auth.expiredMessage"
+              preset="dialog"
+              :mask-closable="false"
+            >
+              <template #header>
+                登录已过期
+              </template>
+              <n-space vertical>
+                <n-text>{{ auth.expiredMessage }}</n-text>
+                <n-text depth="3">
+                  是否立即重新登录？确认后将自动打开 CNB 登录窗口。
+                </n-text>
+              </n-space>
+              <template #action>
+                <n-space justify="end">
+                  <n-button
+                    :disabled="auth.loggingIn"
+                    @click="auth.dismissRelogin()"
+                  >
+                    暂不
+                  </n-button>
+                  <n-button
+                    :loading="auth.loggingIn"
+                    type="primary"
+                    @click="auth.confirmRelogin()"
+                  >
+                    重新登录
+                  </n-button>
+                </n-space>
+              </template>
+            </n-modal>
           </n-loading-bar-provider>
         </n-notification-provider>
       </n-dialog-provider>
@@ -639,17 +712,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from './renderer/store/auth'
 import { useProjectsStore } from './renderer/store/projects'
 import { useMergeStore } from './renderer/store/merge'
 import BatchMergeFlowDialog, { type BatchMergeFlowDialogExposed } from './renderer/components/BatchMergeFlowDialog.vue'
+import FilterInput, { type FilterInputExposed } from './renderer/components/FilterInput.vue'
 import {
   checkForUpdate,
   getAppVersion,
   getCloseAction,
   getPlatform,
   getUpdateStatus,
+  onAuthExpired,
+  onBranchesSorted,
   onUpdateStatus,
   openExternal,
   setCloseAction,
@@ -657,6 +733,7 @@ import {
   type UpdateStatus,
 } from './renderer/ipc/bridge'
 import {
+  darkTheme,
   NButton,
   NCheckbox,
   NConfigProvider,
@@ -669,6 +746,7 @@ import {
   NFlex,
   NLoadingBarProvider,
   NMessageProvider,
+  NModal,
   NNotificationProvider,
   NCard,
   NGrid,
@@ -688,6 +766,16 @@ const auth = useAuthStore()
 const projects = useProjectsStore()
 const merge = useMergeStore()
 
+// ---------- 深色模式：跟随系统（Electron 渲染进程的 prefers-color-scheme 跟随 nativeTheme） ----------
+
+const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)')
+const isDark = ref(prefersDark?.matches ?? false)
+if (prefersDark) {
+  prefersDark.addEventListener('change', (e) => {
+    isDark.value = e.matches
+  })
+}
+
 const canUseContent = computed(() => auth.connected)
 
 const sourceBranch = computed(() => projects.selectedSourceBranch)
@@ -695,10 +783,46 @@ const selectedTargets = computed(() => merge.selectedTargets)
 
 const sourceFilter = ref('')
 
+// ---------- 过滤输入框聚焦（Ctrl/Cmd+F）与全选当前（目标列表 Ctrl/Cmd+A） ----------
+
+const repoFilterRef = ref<FilterInputExposed | null>(null)
+
+function onKeyDownGlobal(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+    e.preventDefault()
+    repoFilterRef.value?.focus()
+  }
+}
+
+watch(
+  () => projects.selectedRepo,
+  () => {
+    sourceFilter.value = ''
+    merge.targetFilter = ''
+    lastTargetKey.value = ''
+  },
+)
+
+// 窗口标题跟随当前上下文，便于多窗口/任务栏识别
+watch(
+  [() => projects.selectedRepo, () => projects.selectedSourceBranch, () => merge.selectedTargets.length],
+  ([repo, source, targetCount]) => {
+    document.title = repo
+      ? `${repo} · ${source || '未选源'} → ${targetCount} 个目标`
+      : 'CNB 批量合并工具'
+  },
+  { immediate: true },
+)
+
 const themeVars = useThemeVars()
 
 const styles = computed(() => {
-  const v = themeVars.value
+  // App.vue 是 n-config-provider 的父级，useThemeVars 的注入到不了自身，
+  // 拿到的始终是 naive 默认浅色变量；深色模式下改用 darkTheme.common，
+  // 保证内联样式（列表边框/分隔线/选中文字/操作栏底色等）跟随主题。
+  const v: any = isDark.value
+    ? (darkTheme.common as Record<string, unknown>)
+    : themeVars.value
 
   return {
     listThemeVars: {
@@ -874,8 +998,13 @@ const styles = computed(() => {
       textAlign: 'center',
       color: v.textColor3,
     },
+    webBtn: {
+      opacity: 0.55,
+    },
     starIcon: {
       color: v.warningColor,
+      // 与后续分支名文本的间距（原 #icon 槽自带 margin，内联后需手动补）
+      marginRight: '6px',
     },
     checkIcon: {
       display: 'inline-block',
@@ -883,6 +1012,7 @@ const styles = computed(() => {
       color: v.primaryColor,
       textAlign: 'center',
       fontWeight: 600,
+      marginRight: '6px',
     },
   } as const
 })
@@ -1010,6 +1140,8 @@ function openReleasePage() {
 }
 
 let offUpdateStatus: (() => void) | null = null
+let offAuthExpired: (() => void) | null = null
+let offBranchesSorted: (() => void) | null = null
 
 // ---------- Windows：关闭行为设置（最小化到托盘 / 直接退出 / 每次询问） ----------
 const isWindows = getPlatform() === 'win32'
@@ -1041,15 +1173,136 @@ function onClickProject(p: { id: string; display: string }, e: MouseEvent) {
   scrollEventTargetIntoView(e)
 }
 
+function openRepoInBrowser(p: { id: string }) {
+  void openExternal(`https://cnb.cool/${p.id}`)
+}
+
 function onClickSourceBranch(name: string, e: MouseEvent) {
   projects.selectedSourceBranch = name
   scrollEventTargetIntoView(e)
 }
 
 function onClickTargetRow(name: string, e: MouseEvent) {
+  // Shift 点击：从上次点击项到当前项区间全选（文件管理器习惯）
+  if (e.shiftKey && lastTargetKey.value) {
+    const keys = targetRowNames.value
+    const a = keys.indexOf(lastTargetKey.value)
+    const b = keys.indexOf(name)
+    if (a >= 0 && b >= 0) {
+      const [s, t] = a <= b ? [a, b] : [b, a]
+      merge.addSelectedTargets(keys.slice(s, t + 1))
+      lastTargetKey.value = name
+      scrollEventTargetIntoView(e)
+      return
+    }
+  }
   onToggleTarget(name)
+  lastTargetKey.value = name
   scrollEventTargetIntoView(e)
 }
+
+/** 当前可见且可选（非同源禁用）的目标分支名，供 Shift 区间计算 */
+const targetRowNames = computed(() =>
+  displayTargetRows.value
+    .filter((row): row is { type: 'branch'; name: string; isCore: boolean } => row.type === 'branch')
+    .filter((row) => row.name !== projects.selectedSourceBranch)
+    .map((row) => row.name),
+)
+
+/** Shift 区间多选的锚点（上次点击的目标分支名） */
+const lastTargetKey = ref('')
+
+// ---------- 键盘流：列表获得焦点后 ↑/↓ 移动高亮，Enter 选择（仓库/源分支）、空格勾选（目标分支） ----------
+
+type KbdList = 'repo' | 'source' | 'target'
+
+const kbd = reactive<Record<KbdList, string>>({ repo: '', source: '', target: '' })
+
+/** 三个列表当前可见项的 key 序列（与 DOM 顺序一致） */
+function kbdKeys(list: KbdList): string[] {
+  if (list === 'repo') return projects.sortedItems.map((p) => String(p.id))
+  if (list === 'source') return displaySourceBranches.value
+  return displayTargetRows.value
+    .filter((row): row is { type: 'branch'; name: string; isCore: boolean } => row.type === 'branch')
+    .filter((row) => row.name !== projects.selectedSourceBranch)
+    .map((row) => row.name)
+}
+
+function moveKbd(list: KbdList, delta: number) {
+  const keys = kbdKeys(list)
+  if (!keys.length) return
+  const idx = keys.indexOf(kbd[list])
+  const next =
+    idx < 0
+      ? delta > 0
+        ? 0
+        : keys.length - 1
+      : Math.min(keys.length - 1, Math.max(0, idx + delta))
+  kbd[list] = keys[next]
+}
+
+function activateKbd(list: KbdList) {
+  const key = kbd[list]
+  if (!key) return
+  if (list === 'repo') {
+    const p = projects.sortedItems.find((i) => String(i.id) === key)
+    if (p) projects.selectProject({ id: p.id, display: p.display })
+    return
+  }
+  if (list === 'source') {
+    projects.selectedSourceBranch = key
+    return
+  }
+  merge.toggleTarget(key)
+}
+
+function onListKeydown(list: KbdList, e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && list === 'target') {
+    // 目标列表 Ctrl/Cmd+A = 全选当前
+    e.preventDefault()
+    selectVisibleTargets()
+    return
+  }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    moveKbd(list, e.key === 'ArrowDown' ? 1 : -1)
+    return
+  }
+  if (e.key === 'Enter') {
+    // 目标分支列表 Enter 无语义（空格负责勾选），交给按钮默认行为
+    if (list === 'target') return
+    e.preventDefault()
+    activateKbd(list)
+    return
+  }
+  if (e.key === ' ') {
+    // 拦截空格：避免焦点在按钮上时触发重复点击，改由高亮项语义接管
+    e.preventDefault()
+    if (list === 'target') activateKbd(list)
+  }
+}
+
+// 高亮项变化后滚动到可视区域
+watch(kbd, async () => {
+  await nextTick()
+  const labels: Record<KbdList, string> = {
+    repo: '项目列表',
+    source: '源分支列表',
+    target: '目标分支列表',
+  }
+  for (const list of ['repo', 'source', 'target'] as KbdList[]) {
+    const key = kbd[list]
+    if (!key) continue
+    try {
+      const el = document.querySelector(
+        `[aria-label="${labels[list]}"] [data-item-key="${CSS.escape(key)}"]`,
+      )
+      el?.scrollIntoView({ block: 'nearest' })
+    } catch {
+      /* ignore */
+    }
+  }
+})
 
 function onToggleTarget(name: string) {
   merge.toggleTarget(name)
@@ -1058,8 +1311,9 @@ function onToggleTarget(name: string) {
 function selectVisibleTargets() {
   const visible = displayTargetRows.value
     .filter((row): row is { type: 'branch'; name: string; isCore: boolean } => row.type === 'branch')
+    .filter((row) => row.name !== projects.selectedSourceBranch)
     .map((row) => row.name)
-  merge.selectedTargets = [...new Set([...merge.selectedTargets, ...visible])]
+  merge.addSelectedTargets(visible)
 }
 
 watch(
@@ -1077,6 +1331,22 @@ watch(
   () => auth.error,
   (val) => {
     if (val) isAuthExpanded.value = true
+  }
+)
+
+// 置顶同步失败提示 6 秒后自动消失（避免常驻遮挡）
+let pinErrorTimer: ReturnType<typeof setTimeout> | null = null
+watch(
+  () => projects.pinError,
+  (val) => {
+    if (pinErrorTimer) clearTimeout(pinErrorTimer)
+    pinErrorTimer = null
+    if (val) {
+      pinErrorTimer = setTimeout(() => {
+        projects.clearPinError()
+        pinErrorTimer = null
+      }, 6000)
+    }
   }
 )
 
@@ -1119,11 +1389,32 @@ onMounted(async () => {
   } catch {
     /* ignore */
   }
+
+  // 登录过期：主进程确认凭证失效后推送，弹窗询问是否重新登录
+  offAuthExpired = onAuthExpired((info) => {
+    auth.promptRelogin(info?.message)
+  })
+
+  // 分支提交时间排序后台完成：平滑更新当前仓库的分支列表
+  offBranchesSorted = onBranchesSorted((payload) => {
+    projects.applySortedBranches(payload?.repo || '', payload?.branches || [])
+  })
+
+  window.addEventListener('keydown', onKeyDownGlobal)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDownGlobal)
   offUpdateStatus?.()
   offUpdateStatus = null
+  offAuthExpired?.()
+  offAuthExpired = null
+  offBranchesSorted?.()
+  offBranchesSorted = null
+  if (pinErrorTimer) {
+    clearTimeout(pinErrorTimer)
+    pinErrorTimer = null
+  }
 })
 </script>
 
@@ -1221,6 +1512,23 @@ onUnmounted(() => {
 .gl-list-item[data-selected='true'].n-button--focus {
   outline: none;
   box-shadow: var(--gl-list-focus-ring), var(--gl-list-shadow-selected);
+}
+
+/* 键盘流：↑/↓ 移动的当前高亮项（与选中态区分，用虚线框） */
+.gl-kbd-active {
+  outline: 2px dashed var(--gl-list-indicator);
+  outline-offset: -2px;
+  border-radius: var(--gl-list-radius);
+}
+
+/* 仓库行"网页打开"按钮：默认弱化，悬停点亮 */
+.web-btn {
+  transition: opacity var(--gl-list-transition) ease;
+}
+
+.web-btn:hover,
+.web-btn:focus-visible {
+  opacity: 1;
 }
 
 /* 单行省略：适用于按钮列表中的项目/分支名等一行展示的文本 */

@@ -66,6 +66,20 @@ export async function listBranches(payload: {
   return invoke()("cnb:list-branches", payload) as Promise<ListBranchesResponse>;
 }
 
+/** 分支提交时间排序在主进程后台计算完成后的推送（快速路径先返回名称序） */
+export function onBranchesSorted(
+  callback: (payload: { repo: string; branches: string[] }) => void
+) {
+  const ipc = window.ipcRenderer;
+  if (!ipc?.on || !ipc?.off) return () => {};
+  const handler = (_event: any, payload: { repo: string; branches: string[] }) =>
+    callback(payload);
+  ipc.on("cnb:branches-sorted", handler);
+  return () => {
+    ipc.off("cnb:branches-sorted", handler);
+  };
+}
+
 export async function batchMerge(
   payload: BatchMergeRequest
 ): Promise<BatchMergeResponse> {
@@ -87,6 +101,24 @@ export function onBatchMergeLog(callback: (e: BatchMergeLogEvent) => void) {
 
 export async function openExternal(url: string) {
   return invoke()("shell:open-external", url);
+}
+
+/** 发送系统通知（主窗口聚焦时主进程会跳过不打扰；点击通知唤起主窗口） */
+export async function notify(payload: {
+  title: string;
+  body: string;
+}): Promise<{ ok: boolean; skipped?: string }> {
+  return invoke()("app:notify", payload);
+}
+
+/** 复制文本到系统剪贴板 */
+export async function copyText(text: string): Promise<{ ok: boolean }> {
+  return invoke()("app:copy-text", text);
+}
+
+/** 同步批量合并运行状态到主进程（用于合并中的退出保护） */
+export async function setMergeRunning(running: boolean): Promise<{ ok: boolean }> {
+  return invoke()("app:set-merge-running", running);
 }
 
 /** 当前平台标识（Electron preload 注入；非 Electron 环境返回空字符串） */
@@ -143,5 +175,24 @@ export function onUpdateStatus(callback: (status: UpdateStatus) => void) {
   ipc.on("cnb:update-status", handler);
   return () => {
     ipc.off("cnb:update-status", handler);
+  };
+}
+
+// ---------- 登录过期通知（主进程确认凭证失效后推送，渲染层弹窗询问重新登录） ----------
+
+export interface AuthExpiredInfo {
+  /** 失效的认证模式：cookie=网页登录会话，token=访问令牌 */
+  mode: "cookie" | "token";
+  message: string;
+}
+
+/** 订阅登录过期推送（一次过期只推送一次，重新登录成功后重新武装） */
+export function onAuthExpired(callback: (info: AuthExpiredInfo) => void) {
+  const ipc = window.ipcRenderer;
+  if (!ipc?.on || !ipc?.off) return () => {};
+  const handler = (_event: any, payload: AuthExpiredInfo) => callback(payload);
+  ipc.on("cnb:auth-expired", handler);
+  return () => {
+    ipc.off("cnb:auth-expired", handler);
   };
 }

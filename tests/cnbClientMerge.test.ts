@@ -10,6 +10,7 @@ const httpMock = {
   defaults: { headers: { common: {} as Record<string, string> } },
   get: vi.fn(),
   put: vi.fn(),
+  interceptors: { response: { use: vi.fn() } },
 };
 
 vi.mock("axios", async (importOriginal) => {

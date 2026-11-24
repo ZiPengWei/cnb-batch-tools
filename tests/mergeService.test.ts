@@ -13,10 +13,11 @@ function createClientMock() {
   } as const;
 }
 
-/** 带真实 axios 实例结构（defaults.headers.common）的实例 mock */
+/** 带真实 axios 实例结构（defaults.headers.common、interceptors）的实例 mock */
 function axiosInstanceMock(methods: Record<string, unknown>) {
   return {
     defaults: { headers: { common: {} as Record<string, string> } },
+    interceptors: { response: { use: vi.fn() } },
     ...methods,
   };
 }

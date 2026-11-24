@@ -19,6 +19,8 @@
         <n-tag
           v-for="target in targetBranches"
           :key="target"
+          :closable="!confirmRunning"
+          @close="emit('remove-target', target)"
         >
           {{ target }}
         </n-tag>
@@ -26,6 +28,45 @@
       <n-text depth="3">
         将为每个目标分支分别创建 PR，共 {{ targetCount }} 个。
       </n-text>
+
+      <div
+        v-if="lastRun"
+        class="last-run"
+      >
+        <n-text
+          depth="3"
+          :title="`上次合并于 ${new Date(lastRun.ts).toLocaleString('zh-CN')}`"
+        >
+          上次合并：{{ formatRelativeTime(lastRun.ts) }} · {{ lastRun.source }} →
+          {{ lastRun.targets.join('、') }} · 成功 {{ lastRun.merged }} / 冲突
+          {{ lastRun.conflicts }} / 失败 {{ lastRun.failures }}
+        </n-text>
+      </div>
+
+      <details
+        v-if="recentRuns.length > 1"
+        class="history-details"
+      >
+        <summary>
+          <n-text depth="3">
+            该仓库最近 {{ recentRuns.length }} 次合并
+          </n-text>
+        </summary>
+        <div class="history-list">
+          <n-space vertical>
+            <n-text
+              v-for="h in recentRuns"
+              :key="h.ts"
+              depth="3"
+            >
+              {{ formatRelativeTime(h.ts) }} · {{ h.source }} →
+              {{ h.targets.join('、') }}（成功 {{ h.merged }} / 冲突
+              {{ h.conflicts }} / 失败 {{ h.failures }}）
+            </n-text>
+          </n-space>
+        </div>
+      </details>
+
       <n-alert
         :show-icon="true"
         type="warning"
@@ -95,14 +136,17 @@
  * - logLines: 日志文本行数组
  * - run: 触发合并的异步函数，返回合并摘要或 null
  * - disableCloseWhenRunning: 运行中是否禁止关闭
+ * - history: 合并历史（用于展示当前仓库的最近合并记录）
  * - modalWidth/confirmTitle/runningTitle/warningText: 文案与样式可配置项
  *
  * Emits：
  * - update:show: (val: boolean) 控制弹窗显示
  * - run-start/run-finish: 合并开始与结束（附 summary）
+ * - remove-target: (name: string) 确认前移除某个目标分支（运行中不可移除）
  */
 import { computed, nextTick, ref, watch } from 'vue'
-import type { MergeRunSummary } from '../store/merge'
+import type { MergeHistoryEntry, MergeRunSummary } from '../store/merge'
+import { formatRelativeTime } from '../store/merge'
 import {
   NAlert,
   NButton,
@@ -130,6 +174,7 @@ const props = withDefaults(
     logLines: string[]
     run: (repo: string, sourceBranches: string[]) => Promise<MergeRunSummary | null>
     disableCloseWhenRunning?: boolean
+    history?: MergeHistoryEntry[]
     modalWidth?: string
     confirmTitle?: string
     runningTitle?: string
@@ -138,6 +183,7 @@ const props = withDefaults(
   {
     disableCloseWhenRunning: true,
     targetBranches: () => [],
+    history: () => [],
     modalWidth: 'min(600px, 92vw)',
     confirmTitle: '确认合并',
     runningTitle: '正在合并...',
@@ -150,10 +196,18 @@ const emit = defineEmits<{
   (e: 'update:show', val: boolean): void
   (e: 'run-start'): void
   (e: 'run-finish', summary: MergeRunSummary | null): void
+  (e: 'remove-target', name: string): void
 }>()
 
 const confirmRunning = ref(false)
 const confirmLogEl = ref<HTMLDivElement | null>(null)
+
+/** 当前仓库的合并记录（最近在前） */
+const repoRuns = computed(() =>
+  props.history.filter((h) => h.repo === props.repo),
+)
+const lastRun = computed(() => repoRuns.value[0] || null)
+const recentRuns = computed(() => repoRuns.value.slice(0, 5))
 
 const themeVars = useThemeVars()
 
@@ -259,5 +313,27 @@ defineExpose<BatchMergeConfirmDialogExposed>({
   display: block;
   margin-bottom: 4px;
   font-size: 12px;
+}
+
+.last-run {
+  display: block;
+}
+
+.history-details {
+  border-top: 1px solid var(--n-border-color, transparent);
+  padding-top: 8px;
+}
+
+.history-details summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.history-details summary::marker {
+  color: var(--n-text-color-3, currentColor);
+}
+
+.history-list {
+  padding: 8px 0 4px 18px;
 }
 </style>

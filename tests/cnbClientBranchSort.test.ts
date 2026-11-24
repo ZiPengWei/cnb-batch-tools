@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const httpMock = {
   defaults: { headers: { common: {} as Record<string, string> } },
   get: vi.fn(),
+  interceptors: { response: { use: vi.fn() } },
 };
 
 vi.mock("axios", async (importOriginal) => {

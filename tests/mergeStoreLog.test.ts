@@ -28,6 +28,11 @@ vi.mock("../src/renderer/ipc/bridge", () => {
       batchMergeLogCallback?.({ runId, text: "step-2", error: true });
       return batchMergeResult;
     },
+    notify: vi.fn(async () => ({ ok: true })),
+    setMergeRunning: vi.fn(async () => ({ ok: true })),
+    listProjects: vi.fn(async () => ({ items: [] })),
+    listBranches: vi.fn(async () => ({ branches: [] })),
+    setRepoPinned: vi.fn(async () => ({ ok: true })),
   };
 });
 

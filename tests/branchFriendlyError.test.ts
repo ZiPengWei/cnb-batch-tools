@@ -12,6 +12,7 @@ import { createPinia, setActivePinia } from "pinia";
 const httpMock = {
   defaults: { headers: { common: {} as Record<string, string> } },
   get: vi.fn(),
+  interceptors: { response: { use: vi.fn() } },
 };
 
 vi.mock("axios", async (importOriginal) => {
@@ -111,9 +112,8 @@ describe("CnbClient.getBranchesFriendly 诊断", () => {
     expect(userCalls).toHaveLength(0);
   });
 
-  it("成功时透传按提交时间排序的分支", async () => {
-    httpMock.get.mockImplementation(async (_url: string, config?: any) => {
-      const url = String(_url);
+  it("成功时透传分支列表（快速路径不做提交时间排序）", async () => {
+    httpMock.get.mockImplementation(async (url: string) => {
       if (url.endsWith("/-/git/branches")) {
         return {
           data: [
@@ -122,19 +122,18 @@ describe("CnbClient.getBranchesFriendly 诊断", () => {
           ],
         };
       }
-      const sha = config?.params?.sha;
-      const dates: Record<string, string> = {
-        newest: "2026-11-01T00:00:00Z",
-        old: "2026-01-01T00:00:00Z",
-      };
-      return {
-        data: [{ commit: { committer: { date: dates[sha] }, author: { date: dates[sha] } } }],
-      };
+      throw new Error(`unexpected url: ${url}`);
     });
     const client = new CnbClient();
     client.setCookieAuth("sessionid=abc");
+    // 快速路径保持服务器顺序，提交时间排序由后台任务完成后推送
     const result = await client.getBranchesFriendly("org/repo");
-    expect(result.map((b) => b.name)).toEqual(["newest", "old"]);
+    expect(result.map((b) => b.name)).toEqual(["old", "newest"]);
+    // 未发起提交时间查询请求
+    const commitCalls = httpMock.get.mock.calls.filter(([u]) =>
+      String(u).endsWith("/-/git/commits")
+    );
+    expect(commitCalls).toHaveLength(0);
   });
 });
 

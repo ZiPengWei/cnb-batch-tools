@@ -24,6 +24,8 @@ export const useAuthStore = defineStore('auth', {
     error: '',
     busy: false,
     loggingIn: false,
+    /** 登录过期提示文案（非空 = 展示"是否重新登录"弹窗） */
+    expiredMessage: '',
   }),
   actions: {
     async loadLocal() {
@@ -52,6 +54,7 @@ export const useAuthStore = defineStore('auth', {
     /**
      * 静默重连：用已持久化的凭证向主进程重新认证并恢复 connected 状态。
      * 成功则恢复用户名并加载仓库列表；失败则静默保持未连接（凭证保留，用户可手动重试）。
+     * 凭证确认失效（401）时弹出"是否重新登录"提示。
      */
     async restoreSession() {
       if (this.connected) return
@@ -59,6 +62,7 @@ export const useAuthStore = defineStore('auth', {
         this.mode === 'cookie' ? Boolean(this.webCookie) : Boolean(this.token)
       if (!hasCredentials) return
       this.busy = true
+      let expired = ''
       try {
         const res = await setAuth({
           baseUrl: this.baseUrl,
@@ -71,12 +75,40 @@ export const useAuthStore = defineStore('auth', {
           this.userName = res.user?.nickname || res.user?.username || ''
           const projects = useProjectsStore()
           projects.loadProjects()
+        } else if (res?.error?.status === 401) {
+          // 保存的凭证已被服务端拒绝（网络异常时 status 为 0，不打扰用户）
+          expired = '保存的登录已过期'
         }
       } catch {
         /* 静默失败：网络异常等场景不打扰用户 */
       } finally {
         this.busy = false
       }
+      if (expired) this.promptRelogin(expired)
+    },
+    /**
+     * 登录过期：记录提示文案，由 App.vue 展示"是否重新登录"弹窗。
+     * 正在登录/连接流程中忽略（表单已展示错误），已展示时忽略重复通知。
+     */
+    promptRelogin(message?: string) {
+      if (isE2E) return
+      if (this.loggingIn || this.busy) return
+      if (this.expiredMessage) return
+      const fallback =
+        this.mode === 'cookie' ? '网页登录会话已过期' : '访问令牌已失效'
+      this.expiredMessage = (message || '').trim() || fallback
+    },
+    /** 暂不重新登录：关闭过期提示弹窗（凭证保留，可稍后手动登录） */
+    dismissRelogin() {
+      this.expiredMessage = ''
+    },
+    /**
+     * 同意重新登录：关闭提示弹窗，并自动弹出 CNB 登录窗口
+     * （forceFresh 清空旧网页会话，确保进入全新登录页）。
+     */
+    async confirmRelogin() {
+      this.expiredMessage = ''
+      await this.loginViaWeb(true)
     },
     saveLocal() {
       // 网页登录（Cookie 模式）始终记住会话，不受"保存登录状态"控制；
@@ -123,6 +155,7 @@ export const useAuthStore = defineStore('auth', {
         this.mode = 'cookie'
         this.baseUrl = COOKIE_BASE_URL
         this.token = ''
+        this.expiredMessage = ''
         this.saveLocal()
         const r = await setAuth({
           baseUrl: COOKIE_BASE_URL,
@@ -201,6 +234,7 @@ export const useAuthStore = defineStore('auth', {
         if (res?.ok) {
           this.connected = true
           this.userName = res.user?.nickname || res.user?.username || ''
+          this.expiredMessage = ''
           this.saveLocal()
           const projects = useProjectsStore()
           projects.loadProjects()

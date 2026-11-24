@@ -1,10 +1,13 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
   nativeImage,
+  nativeTheme,
+  Notification,
   screen,
   session,
   shell,
@@ -55,6 +58,17 @@ let win: BrowserWindow | null;
 const cnb = new CnbClient();
 const mergeService = new MergeService(cnb);
 
+// 登录过期通知：凭证失效确认后推送渲染层，弹窗询问是否重新登录。
+// 登录窗口打开期间不推送——登录探测（testWebCookie）产生的临时 401 不是过期。
+cnb.onAuthExpired = (info) => {
+  try {
+    if (loginWin) return;
+    win?.webContents?.send?.("cnb:auth-expired", info);
+  } catch {
+    /* 窗口可能尚未创建/已销毁，忽略 */
+  }
+};
+
 ipcMain.handle(
   "cnb:set-auth",
   async (
@@ -77,6 +91,8 @@ ipcMain.handle(
       if (payload.webCookie) cnb.setWebCookie(payload.webCookie);
     }
     const res = await cnb.verifyToken();
+    // 认证成功后重新武装登录过期检测（允许下次过期再次通知）
+    if (res.ok) cnb.resetAuthExpiredFlag();
     return res;
   }
 );
@@ -326,14 +342,16 @@ ipcMain.handle(
     _event: IpcMainInvokeEvent,
     payload: { repo: string }
   ): Promise<ListBranchesResponse> => {
-    // 分支按最新提交时间倒序（最近提交的在前），便于挑选活跃分支。
-    // 401/404 会在客户端内做会话/仓库可达性诊断并转换为友好提示，
-    // 这里以结构化 error 返回，避免 Electron 把错误包装成 invoke 前缀文案。
+    // 快速路径：仅拉取分支列表（401/404 在客户端内做会话/仓库可达性诊断并
+    // 转换为友好提示），立即返回让分支可选；提交时间排序在后台计算完成后经
+    // cnb:branches-sorted 推送渲染层平滑更新。这里以结构化 error 返回，
+    // 避免 Electron 把错误包装成 invoke 前缀文案。
     try {
       const branches = await cnb.getBranchesFriendly(payload.repo);
       const names = branches
         .map((b) => b.name)
         .filter((x): x is string => Boolean(x));
+      void scheduleBranchSort(payload.repo);
       return { branches: names };
     } catch (e) {
       return {
@@ -343,6 +361,28 @@ ipcMain.handle(
     }
   }
 );
+
+/** 后台分支排序任务序号（仅保留最新一次请求的结果） */
+let branchSortToken = 0;
+
+/**
+ * 后台按最新提交时间计算分支排序（分支多时较慢，不阻塞列表展示），
+ * 完成后推送 cnb:branches-sorted；渲染层校验 repo 匹配后平滑更新列表。
+ */
+async function scheduleBranchSort(repo: string) {
+  const token = ++branchSortToken;
+  try {
+    const sorted = await cnb.getBranchesSortedByCommitTime(repo);
+    if (token !== branchSortToken) return; // 已有更新的排序请求，丢弃旧结果
+    const names = sorted
+      .map((b) => b.name)
+      .filter((x): x is string => Boolean(x));
+    if (!names.length) return;
+    win?.webContents?.send?.("cnb:branches-sorted", { repo, branches: names });
+  } catch {
+    /* 排序失败不提示，保持名称顺序 */
+  }
+}
 
 ipcMain.handle(
   "cnb:batch-merge",
@@ -362,6 +402,90 @@ ipcMain.handle(
 ipcMain.handle("shell:open-external", async (_event, url: string) => {
   await shell.openExternal(url);
 });
+
+// ---------- 系统通知（批量合并完成提醒，点击唤起主窗口） ----------
+
+ipcMain.handle(
+  "app:notify",
+  (
+    _event: IpcMainInvokeEvent,
+    payload: { title: string; body: string }
+  ): { ok: boolean; skipped?: string } => {
+    try {
+      if (!Notification.isSupported()) return { ok: false, skipped: "unsupported" };
+      // 主窗口正在聚焦时用户就在看结果弹窗，不打扰
+      if (win && !win.isDestroyed() && win.isFocused()) {
+        return { ok: false, skipped: "focused" };
+      }
+      const n = new Notification({
+        title: String(payload?.title || "CNB 批量合并工具"),
+        body: String(payload?.body || "").slice(0, 200),
+      });
+      n.on("click", () => showMainWindow());
+      n.show();
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  }
+);
+
+// ---------- 剪贴板（结果报告复制） ----------
+
+ipcMain.handle("app:copy-text", (_event, text: string) => {
+  try {
+    clipboard.writeText(String(text ?? ""));
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+});
+
+// ---------- 合并进行中的退出保护 ----------
+
+/** 批量合并是否进行中（渲染层经 app:set-merge-running 同步） */
+let mergeRunning = false;
+
+ipcMain.handle("app:set-merge-running", (_event, running: boolean) => {
+  mergeRunning = Boolean(running);
+  return { ok: true };
+});
+
+/** macOS：Cmd+Q 等退出路径在合并进行中时先确认 */
+app.on("before-quit", (e) => {
+  if (mergeRunning && !forceQuitConfirmed) {
+    e.preventDefault();
+    void confirmQuitDuringMerge();
+    return;
+  }
+  isQuitting = true;
+});
+
+let forceQuitConfirmed = false;
+
+async function confirmQuitDuringMerge() {
+  if (!win || win.isDestroyed()) {
+    forceQuitConfirmed = true;
+    app.quit();
+    return;
+  }
+  win.show();
+  win.focus();
+  const { response } = await dialog.showMessageBox(win, {
+    type: "warning",
+    title: "批量合并进行中",
+    message: "批量合并正在进行，退出会中断未完成的合并。",
+    detail: "已开始的 PR 会保留；未处理的目标分支可稍后重试。",
+    buttons: ["取消", "退出并中断"],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  if (response === 1) {
+    forceQuitConfirmed = true;
+    app.quit();
+  }
+}
 
 // ---------- Windows 关闭行为（托盘最小化 / 直接退出，可记住选择） ----------
 
@@ -440,6 +564,29 @@ function ensureTray() {
  * ask → 弹窗询问（可勾选记住选择）；tray → 隐藏到托盘；exit → 真正退出。
  */
 async function handleCloseRequest() {
+  // 合并进行中：先提醒，避免误关中断批量合并
+  if (mergeRunning) {
+    if (!win || win.isDestroyed()) return;
+    const { response } = await dialog.showMessageBox(win, {
+      type: "warning",
+      title: "批量合并进行中",
+      message: "批量合并正在进行，退出会中断未完成的合并。",
+      detail: "可最小化到托盘等待完成；已开始的 PR 会保留。",
+      buttons: ["最小化到托盘", "强制退出"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    if (response !== 1) {
+      ensureTray();
+      win.hide();
+      return;
+    }
+    forceQuitConfirmed = true;
+    isQuitting = true;
+    app.quit();
+    return;
+  }
   let action = closeAction;
   if (action === "ask") {
     if (!win || win.isDestroyed()) return;
@@ -622,7 +769,8 @@ function createWindow() {
     minHeight: initial.minHeight,
     // 先隐藏窗口，页面首次渲染完成后再显示，避免启动白屏
     show: false,
-    backgroundColor: "#ffffff",
+    // 背景跟随系统主题（渲染层 naive 主题同样跟随），避免深色系统下白闪
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#101014" : "#ffffff",
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
     },
@@ -680,11 +828,6 @@ app.on("window-all-closed", () => {
   }
 });
 
-// 任何路径触发的退出（Cmd+Q / 托盘退出 / app.quit）都放行 close 拦截
-app.on("before-quit", () => {
-  isQuitting = true;
-});
-
 app.on("activate", () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
@@ -694,6 +837,10 @@ app.on("activate", () => {
 });
 
 app.whenReady().then(() => {
+  // Windows 系统通知需要 AppUserModelId，否则 Toast 不弹出
+  if (process.platform === "win32") {
+    app.setAppUserModelId(app.getName());
+  }
   closeAction = loadCloseAction();
   createWindow();
   // 自动检查更新：启动后延迟 3 秒（不阻塞启动），之后每 6 小时一次。

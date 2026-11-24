@@ -117,6 +117,17 @@ export class CnbClient {
   /** cnb.cool 网页会话 Cookie（可选，用于同步置顶到网页 dashboard） */
   private webCookie = "";
 
+  /**
+   * 登录过期回调：凭证失效确认后触发（由 electron/main.ts 转发渲染层，
+   * 弹窗询问用户是否重新登录）。一次过期只触发一次，重新登录成功后重置。
+   */
+  onAuthExpired: ((info: { mode: "cookie" | "token"; message: string }) => void) | null =
+    null;
+  /** 已触发过一次过期通知（resetAuthExpiredFlag 重置），避免重复弹窗 */
+  private authExpiredFired = false;
+  /** 凭证复核进行中标志（防止并发复核） */
+  private authCheckPending = false;
+
   constructor(baseUrl = "https://api.cnb.cool", token: string | null = null) {
     this.baseUrl = normalizeBaseUrl(baseUrl);
     this.http = axios.create({
@@ -131,7 +142,70 @@ export class CnbClient {
     // application/vnd.cnb.api+json），axios 默认的 "application/json, text/plain, */*"
     // 会触发 406，这里显式覆盖。
     this.http.defaults.headers.common.Accept = "application/json";
+    // 401 统一探测：任何业务请求返回 401 时延迟复核凭证，确认失效则触发
+    // onAuthExpired（登录窗口期间的临时 401 由 main.ts 侧抑制推送）。
+    // 带 _authVerify 标记的凭证校验请求本身不触发探测：手动连接输错令牌、
+    // 启动静默重连失败属于正常业务错误，由对应表单/流程自行展示。
+    this.http.interceptors.response.use(undefined, (error) => {
+      try {
+        const status = axios.isAxiosError(error)
+          ? error.response?.status
+          : undefined;
+        const cfg = (error as AxiosError)?.config as any;
+        if (status === 401 && !cfg?._authVerify) this.scheduleAuthExpiredCheck();
+      } catch {
+        /* ignore */
+      }
+      return Promise.reject(error);
+    });
     if (token) this.setToken(token);
+  }
+
+  /** 重新登录成功后调用，重新武装登录过期检测（允许下一次过期再次通知） */
+  resetAuthExpiredFlag() {
+    this.authExpiredFired = false;
+  }
+
+  /** 当前是否配置了任一凭证（令牌或网页 Cookie） */
+  private hasAnyCredential(): boolean {
+    const common = this.httpDefaultsCommon();
+    return Boolean(common.Authorization || common.Cookie);
+  }
+
+  /** 401 后延迟复核凭证（去抖 + 避免与登录窗口内的探测互相干扰） */
+  private scheduleAuthExpiredCheck() {
+    if (this.authExpiredFired || this.authCheckPending) return;
+    if (!this.hasAnyCredential()) return;
+    this.authCheckPending = true;
+    setTimeout(() => {
+      void this.confirmAuthExpired();
+    }, 200);
+  }
+
+  /** 复核当前凭证是否真的失效（带 _authVerify 标记，避免拦截器递归探测） */
+  private async confirmAuthExpired() {
+    let invalid = true;
+    try {
+      await this.http.get("/user", { _authVerify: true, timeout: 10_000 } as any);
+      invalid = false; // 会话仍有效（可能刚刚已重新登录）
+    } catch {
+      /* 凭证失效 */
+    }
+    this.authCheckPending = false;
+    if (!invalid || this.authExpiredFired) return;
+    this.authExpiredFired = true;
+    this.fireAuthExpired();
+  }
+
+  private fireAuthExpired() {
+    const mode = this.authMode;
+    const message =
+      mode === "cookie" ? "网页登录会话已过期" : "访问令牌已失效";
+    try {
+      this.onAuthExpired?.({ mode, message });
+    } catch {
+      /* 回调异常不影响主流程 */
+    }
   }
 
   setBaseUrl(url: string) {
@@ -254,8 +328,9 @@ export class CnbClient {
     { ok: true; user: CnbUser } | { ok: false; error: CnbApiError }
   > {
     try {
+      // _authVerify：凭证校验请求自身的 401 不触发登录过期探测
       const res = await requestWithRetry(() =>
-        this.http.get<CnbUser>("/user")
+        this.http.get<CnbUser>("/user", { _authVerify: true } as any)
       );
       return { ok: true, user: res.data };
     } catch (e) {
@@ -340,22 +415,31 @@ export class CnbClient {
   }
 
   /**
-   * 获取分支（按最新提交时间倒序），并对 401/404 做可达性诊断后抛出友好错误。
+   * 获取分支（快速路径）：仅拉取分支列表（服务器顺序），不做提交时间排序，
+   * 保证选仓库后分支立即可选；401/404 做可达性诊断后抛出友好错误。
    *
    * 背景：CNB 对“未登录/无权限的私有仓库”统一返回 404（不泄露存在性），
    * 网页 Cookie 过期后分支请求会变成匿名请求 → 表现为 404 而非 401，
    * 仓库列表（启动时加载的缓存）却看起来正常，用户难以定位。
    * 诊断方式：用当前凭证再请求一次 GET /user —— 失败即凭证失效（提示重新登录）；
    * 成功则说明会话有效，是该仓库不可达（改名/移动/删除/权限回收）。
+   *
+   * 提交时间排序由 electron/main.ts 后台调用 getBranchesSortedByCommitTime
+   * 计算并经 cnb:branches-sorted 事件推回渲染层平滑更新。
    */
   async getBranchesFriendly(repo: string): Promise<CnbBranch[]> {
     try {
-      return await this.getBranchesSortedByCommitTime(repo);
+      return await this.getBranches(repo);
     } catch (e) {
       const err = extractErrorMessage(e);
       if (err.status !== 401 && err.status !== 404) throw e;
       const check = await this.verifyToken();
       if (!check.ok) {
+        // 权威诊断（/user 复核失败）：确认凭证失效，触发登录过期通知
+        if (!this.authExpiredFired) {
+          this.authExpiredFired = true;
+          this.fireAuthExpired();
+        }
         throw new Error(
           this.authMode === "cookie"
             ? "网页登录已过期，请点击「网页登录」重新登录"

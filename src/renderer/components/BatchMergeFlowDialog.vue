@@ -8,6 +8,8 @@
     :source-branches="projects.selectedSourceBranch ? [projects.selectedSourceBranch] : []"
     :target-branches="merge.selectedTargets"
     :target-count="merge.selectedTargets.length"
+    :history="merge.history"
+    @remove-target="onRemoveTarget"
     @run-finish="onMergeFinished"
   />
 
@@ -15,6 +17,8 @@
     v-model:show="showFinish"
     :log-lines="mergeLogLines"
     :summary="finishSummary"
+    :repo="projects.selectedRepo"
+    @retry-failed="onRetryFailed"
   />
 </template>
 
@@ -77,6 +81,26 @@ function closeAll() {
 function onMergeFinished(summary: MergeRunSummary | null) {
   finishSummary.value = summary
   showFinish.value = true
+}
+
+/** 确认弹窗里直接移除误选的目标分支（就地修正，无需回到列表重选） */
+function onRemoveTarget(name: string) {
+  merge.setSelectedTargets(merge.selectedTargets.filter((t) => t !== name))
+}
+
+/**
+ * 仅重试失败：把冲突/失败分支对的目标分支（去重、过滤已不存在的）
+ * 回填为当前选择，关闭结果弹窗并回到确认弹窗重跑（用户再次确认，防误操作）。
+ */
+function onRetryFailed(pairs: Array<{ source: string; target: string }>) {
+  if (!pairs.length) return
+  const valid = new Set(projects.targetBranches)
+  const targets = [...new Set(pairs.map((p) => p.target))].filter((t) =>
+    valid.has(t),
+  )
+  if (!targets.length) return
+  merge.setSelectedTargets(targets)
+  openConfirm()
 }
 
 watch(
