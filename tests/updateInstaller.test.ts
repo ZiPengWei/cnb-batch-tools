@@ -101,7 +101,7 @@ describe("pickAssetForPlatform", () => {
 describe("buildWinInstallScript", () => {
   it("纯 ASCII、含 %~dp0 引用与 move/start/del", () => {
     const s = buildWinInstallScript();
-    expect(/^[\x00-\x7F]*$/.test(s)).toBe(true);
+    expect([...s].every((c) => c.charCodeAt(0) < 128)).toBe(true);
     expect(s).toContain("%~dp0CNB-Tools-update.exe");
     expect(s).toContain('%~dp0"'.slice(0, 0) + "move /y \"%~dp0CNB-Tools-update.exe\" \"%~dp0CNB-Tools.exe\"");
     expect(s).toContain('start "" "%~dp0CNB-Tools.exe"');

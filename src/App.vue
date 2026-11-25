@@ -58,12 +58,12 @@
                             </n-text>
                             <template v-if="updateDownloadPhase === 'downloading'">
                               <n-progress
-                                type="line"
-                                :percentage="updateDownloadPercent"
-                                indicator-placement="inside"
-                                :height="12"
                                 :border-radius="6"
+                                :height="12"
+                                indicator-placement="inside"
+                                :percentage="updateDownloadPercent"
                                 processing
+                                type="line"
                               />
                               <n-text
                                 depth="3"
@@ -96,8 +96,8 @@
                             </n-button>
                             <n-text
                               v-if="updateDownloadPhase === 'error'"
-                              type="error"
                               :style="styles.caption"
+                              type="error"
                             >
                               {{ updateDownloadError }}
                             </n-text>
