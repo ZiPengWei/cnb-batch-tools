@@ -24,6 +24,12 @@ import {
   fetchLatestRelease,
   isNewerVersion,
 } from "../src/main/services/updateChecker";
+import {
+  cleanupMacOldBundle,
+  downloadUpdateAsset,
+  installUpdate,
+} from "../src/main/services/updateInstaller";
+import type { DownloadProgress } from "../src/main/services/updateInstaller";
 import type {
   BatchMergeRequest,
   BatchMergeResponse,
@@ -165,6 +171,97 @@ ipcMain.handle("cnb:get-update-status", () => updateStatus);
 ipcMain.handle("cnb:check-update", async () => {
   await runUpdateCheck();
   return updateStatus;
+});
+
+// ---------- 应用内更新：下载与安装 ----------
+
+interface UpdateDownloadState {
+  phase: "idle" | "downloading" | "downloaded" | "error";
+  received: number;
+  total: number;
+  percent: number;
+  filePath: string;
+  error: string;
+}
+
+let updateDownload: UpdateDownloadState = {
+  phase: "idle",
+  received: 0,
+  total: 0,
+  percent: 0,
+  filePath: "",
+  error: "",
+};
+
+function pushUpdateDownload(patch: Partial<UpdateDownloadState>) {
+  updateDownload = { ...updateDownload, ...patch };
+  try {
+    win?.webContents?.send?.("cnb:update-download", updateDownload);
+  } catch {
+    /* 窗口可能尚未创建/已销毁，忽略 */
+  }
+}
+
+ipcMain.handle("cnb:get-update-download", () => updateDownload);
+
+ipcMain.handle("app:download-update", async () => {
+  if (updateDownload.phase === "downloading") return updateDownload;
+  pushUpdateDownload({ phase: "downloading", error: "", filePath: "" });
+  try {
+    const result = await downloadUpdateAsset(
+      {
+        // Windows 优先 exe 同目录（全自动替换需要），mac 用临时目录
+        preferredDir:
+          process.platform === "win32"
+            ? process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath)
+            : app.getPath("temp"),
+        fallbackDir: app.getPath("downloads"),
+      },
+      (p: DownloadProgress) => pushUpdateDownload(p),
+    );
+    pushUpdateDownload({
+      phase: "downloaded",
+      percent: 100,
+      received: result.size,
+      total: result.size,
+      filePath: result.filePath,
+    });
+    return updateDownload;
+  } catch (e: any) {
+    pushUpdateDownload({
+      phase: "error",
+      error: e?.message ? `下载更新失败: ${e.message}` : "下载更新失败",
+    });
+    return updateDownload;
+  }
+});
+
+ipcMain.handle("app:install-update", () => {
+  const filePath = updateDownload.filePath;
+  if (!filePath || !fs.existsSync(filePath)) {
+    return { ok: false, message: "未找到已下载的更新文件，请重新下载" };
+  }
+  try {
+    installUpdate(filePath);
+    // 安装脚本已在后台排队：稍候退出，由脚本完成"替换 + 重启"
+    setTimeout(() => {
+      app.quit();
+    }, 500);
+    return { ok: true };
+  } catch (e: any) {
+    const message = e?.message ? `安装更新失败: ${e.message}` : "安装更新失败";
+    // 降级：mac 挂载镜像让用户手动拖入；win 打开文件所在文件夹
+    try {
+      if (process.platform === "darwin") {
+        void shell.openPath(filePath);
+      } else {
+        shell.showItemInFolder(filePath);
+      }
+    } catch {
+      /* 降级失败忽略 */
+    }
+    return { ok: false, message };
+  }
 });
 
 /**
@@ -841,6 +938,8 @@ app.whenReady().then(() => {
   if (process.platform === "win32") {
     app.setAppUserModelId(app.getName());
   }
+  // macOS 应用内更新会把旧版保留为 .old，本次已是新版启动 → 清理上次备份
+  cleanupMacOldBundle();
   closeAction = loadCloseAction();
   createWindow();
   // 自动检查更新：启动后延迟 3 秒（不阻塞启动），之后每 6 小时一次。

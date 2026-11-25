@@ -178,6 +178,51 @@ export function onUpdateStatus(callback: (status: UpdateStatus) => void) {
   };
 }
 
+// ---------- 应用内更新：下载与安装 ----------
+
+export interface UpdateDownloadState {
+  phase: "idle" | "downloading" | "downloaded" | "error";
+  received: number;
+  total: number;
+  percent: number;
+  filePath: string;
+  error: string;
+}
+
+export interface InstallUpdateResult {
+  ok: boolean;
+  /** 安装失败时的说明（已自动降级：mac 挂载镜像 / win 打开所在文件夹） */
+  message?: string;
+}
+
+/** 主进程当前的更新下载状态 */
+export async function getUpdateDownload(): Promise<UpdateDownloadState | null> {
+  return invoke()("cnb:get-update-download") as Promise<UpdateDownloadState | null>;
+}
+
+/** 开始下载当前平台的更新包（下载中重复调用会被忽略；进度经 onUpdateDownloadProgress 推送） */
+export async function downloadUpdate(): Promise<UpdateDownloadState | null> {
+  return invoke()("app:download-update") as Promise<UpdateDownloadState | null>;
+}
+
+/** 安装已下载的更新（启动替换脚本后应用自动退出重启；失败时主进程已做降级动作） */
+export async function installUpdate(): Promise<InstallUpdateResult> {
+  return invoke()("app:install-update") as Promise<InstallUpdateResult>;
+}
+
+/** 订阅更新下载进度/阶段推送 */
+export function onUpdateDownloadProgress(
+  callback: (state: UpdateDownloadState) => void,
+) {
+  const ipc = window.ipcRenderer;
+  if (!ipc?.on || !ipc?.off) return () => {};
+  const handler = (_event: any, payload: UpdateDownloadState) => callback(payload);
+  ipc.on("cnb:update-download", handler);
+  return () => {
+    ipc.off("cnb:update-download", handler);
+  };
+}
+
 // ---------- 登录过期通知（主进程确认凭证失效后推送，渲染层弹窗询问重新登录） ----------
 
 export interface AuthExpiredInfo {

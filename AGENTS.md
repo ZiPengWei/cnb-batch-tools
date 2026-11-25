@@ -69,6 +69,11 @@
 - `src/main/services/updateChecker.ts`
   - 检查 GitHub `releases/latest` 是否有新版本（语义化版本比较；直连失败后走环境代理重试）。
   - 主进程启动 3 秒后首次检查，之后每 6 小时一次；结果经 `cnb:update-status` 推送渲染层，仅提示不强制更新。
+- `src/main/services/updateInstaller.ts`
+  - 应用内更新（手写轻量方案，不用 electron-updater：portable exe 不支持其自动替换、macOS 未签名不可用 Squirrel）。
+  - 下载：按平台从 Release assets 匹配 `CNB-Tools.exe/.dmg`，axios stream 下载 + 进度推送（`cnb:update-download`），GitHub asset sha256 digest 校验完整性；Windows 优先下载到 exe 同目录（`PORTABLE_EXECUTABLE_DIR`），不可写降级下载目录。
+  - 安装 Windows：生成纯 ASCII 替换脚本（`%~dp0` 引用自身目录规避中文路径编码问题）等旧进程退出后 move 覆盖 + 重启；目录不可写抛错由调用方降级。
+  - 安装 macOS：`hdiutil attach` → `replaceMacApp`（复制 .app 为临时名 → 双 rename 原子替换，旧版保留 `.old` 供回滚）→ 删 dmg → 延迟 `open` 新版；启动时 `cleanupMacOldBundle` 清理上次备份；Node 写入的文件不带 quarantine，安装后不弹"已损坏"。
 - `src/main/services/mergeService.ts`
   - 很薄的一层入口，实际逻辑委托给 merge strategy。
 - `src/main/services/mergeStrategies/merge.ts`

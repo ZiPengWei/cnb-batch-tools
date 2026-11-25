@@ -56,11 +56,57 @@
                             <n-text type="warning">
                               发现新版本 v{{ latestVersion }}
                             </n-text>
+                            <template v-if="updateDownloadPhase === 'downloading'">
+                              <n-progress
+                                type="line"
+                                :percentage="updateDownloadPercent"
+                                indicator-placement="inside"
+                                :height="12"
+                                :border-radius="6"
+                                processing
+                              />
+                              <n-text
+                                depth="3"
+                                :style="styles.caption"
+                              >
+                                正在下载更新… {{ updateDownloadPercent }}%
+                              </n-text>
+                            </template>
+                            <template v-else-if="updateDownloadPhase === 'downloaded'">
+                              <n-button
+                                :loading="installingUpdate"
+                                type="success"
+                                @click="installNowUpdate"
+                              >
+                                重启并安装
+                              </n-button>
+                              <n-text
+                                depth="3"
+                                :style="styles.caption"
+                              >
+                                已就绪，点击后将自动替换并重启应用
+                              </n-text>
+                            </template>
                             <n-button
+                              v-else
+                              type="primary"
+                              @click="startUpdateDownload"
+                            >
+                              下载并自动安装
+                            </n-button>
+                            <n-text
+                              v-if="updateDownloadPhase === 'error'"
+                              type="error"
+                              :style="styles.caption"
+                            >
+                              {{ updateDownloadError }}
+                            </n-text>
+                            <n-button
+                              text
                               type="primary"
                               @click="openReleasePage"
                             >
-                              前往下载
+                              前往 Release 页手动下载
                             </n-button>
                           </template>
                           <template v-else-if="updateError">
@@ -720,16 +766,21 @@ import BatchMergeFlowDialog, { type BatchMergeFlowDialogExposed } from './render
 import FilterInput, { type FilterInputExposed } from './renderer/components/FilterInput.vue'
 import {
   checkForUpdate,
+  downloadUpdate,
   getAppVersion,
   getCloseAction,
   getPlatform,
+  getUpdateDownload,
   getUpdateStatus,
+  installUpdate,
   onAuthExpired,
   onBranchesSorted,
+  onUpdateDownloadProgress,
   onUpdateStatus,
   openExternal,
   setCloseAction,
   type CloseAction,
+  type UpdateDownloadState,
   type UpdateStatus,
 } from './renderer/ipc/bridge'
 import {
@@ -759,6 +810,7 @@ import {
   NRadioButton,
   NBadge,
   NPopover,
+  NProgress,
   useThemeVars,
 } from './renderer/ui/naive'
 
@@ -1139,9 +1191,54 @@ function openReleasePage() {
   void openExternal(releaseUrl.value)
 }
 
+// ---------- 应用内更新：下载与安装（主进程执行，渲染层三态展示） ----------
+const updateDownloadPhase = ref<'idle' | 'downloading' | 'downloaded' | 'error'>('idle')
+const updateDownloadPercent = ref(0)
+const updateDownloadError = ref('')
+const installingUpdate = ref(false)
+
+function applyUpdateDownload(s: UpdateDownloadState | null | undefined) {
+  if (!s) return
+  updateDownloadPhase.value = s.phase
+  updateDownloadPercent.value = s.percent || 0
+  if (s.error) updateDownloadError.value = s.error
+}
+
+async function startUpdateDownload() {
+  if (updateDownloadPhase.value === 'downloading') return
+  updateDownloadError.value = ''
+  try {
+    applyUpdateDownload(await downloadUpdate())
+  } catch {
+    updateDownloadPhase.value = 'error'
+    updateDownloadError.value = '下载更新失败，请前往 Release 页手动下载'
+  }
+}
+
+async function installNowUpdate() {
+  if (installingUpdate.value) return
+  installingUpdate.value = true
+  try {
+    const r = await installUpdate()
+    if (r?.ok) {
+      // 主进程已排队替换脚本并会自行退出，此处无需复位状态
+      return
+    }
+    // 降级：主进程已挂载镜像（mac）或打开所在文件夹（win），提示手动完成
+    updateDownloadPhase.value = 'error'
+    updateDownloadError.value = r?.message || '自动安装失败，请按提示手动完成更新'
+  } catch {
+    updateDownloadPhase.value = 'error'
+    updateDownloadError.value = '安装更新失败，请前往 Release 页手动下载'
+  } finally {
+    installingUpdate.value = false
+  }
+}
+
 let offUpdateStatus: (() => void) | null = null
 let offAuthExpired: (() => void) | null = null
 let offBranchesSorted: (() => void) | null = null
+let offUpdateDownload: (() => void) | null = null
 
 // ---------- Windows：关闭行为设置（最小化到托盘 / 直接退出 / 每次询问） ----------
 const isWindows = getPlatform() === 'win32'
@@ -1390,6 +1487,14 @@ onMounted(async () => {
     /* ignore */
   }
 
+  // 应用内更新：恢复下载状态（下载中/已就绪跨页面保持）并订阅进度推送
+  offUpdateDownload = onUpdateDownloadProgress(applyUpdateDownload)
+  try {
+    applyUpdateDownload(await getUpdateDownload())
+  } catch {
+    /* ignore */
+  }
+
   // 登录过期：主进程确认凭证失效后推送，弹窗询问是否重新登录
   offAuthExpired = onAuthExpired((info) => {
     auth.promptRelogin(info?.message)
@@ -1411,6 +1516,8 @@ onUnmounted(() => {
   offAuthExpired = null
   offBranchesSorted?.()
   offBranchesSorted = null
+  offUpdateDownload?.()
+  offUpdateDownload = null
   if (pinErrorTimer) {
     clearTimeout(pinErrorTimer)
     pinErrorTimer = null

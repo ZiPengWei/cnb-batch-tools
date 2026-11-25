@@ -111,6 +111,13 @@ vi.mock("../src/renderer/ipc/bridge", () => {
     setCloseAction: vi.fn(async (action: string) => action),
     getAppVersion: vi.fn(async () => "1.0.0"),
     getUpdateStatus: vi.fn(async () => null),
+    getUpdateDownload: vi.fn(async () => null),
+    downloadUpdate: vi.fn(async () => null),
+    installUpdate: vi.fn(async () => ({ ok: true })),
+    onUpdateDownloadProgress: vi.fn((cb: unknown) => {
+      (globalThis as any).__updateDownloadCallback = cb;
+      return () => {};
+    }),
     checkForUpdate: vi.fn(),
     onUpdateStatus: vi.fn(() => () => {}),
     onAuthExpired: vi.fn(() => () => {}),
@@ -769,6 +776,93 @@ describe("App 快捷键 / 窗口标题 / 仓库网页入口", () => {
     expect(vi.mocked(openExternal)).toHaveBeenCalledWith(
       "https://cnb.cool/org/demo",
     );
+
+    wrapper.unmount();
+  }, 30_000);
+});
+
+describe("App 应用内更新 UI", () => {
+  it("有新版本时展示下载按钮；下载完成后展示重启安装；安装失败显示降级提示", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+    const bridge = await import("../src/renderer/ipc/bridge");
+
+    // 有新版本
+    vi.mocked(bridge.getUpdateStatus).mockResolvedValue({
+      checking: false,
+      current: "1.0.7",
+      latest: "1.0.8",
+      hasUpdate: true,
+      releaseUrl: "https://example.com/releases",
+      error: "",
+    });
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    // n-popover 懒渲染：先点版本号按钮展开，内容才挂到 DOM
+    const versionBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (b) => (b.textContent || "").includes("v1.0.7"),
+    );
+    expect(versionBtn).toBeTruthy();
+    versionBtn!.click();
+    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 30));
+
+    // 初始：下载并自动安装
+    const dlBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (b) => (b.textContent || "").includes("下载并自动安装"),
+    );
+    expect(dlBtn).toBeTruthy();
+
+    // 点击下载 → 主进程返回 downloading 状态
+    vi.mocked(bridge.downloadUpdate).mockResolvedValue({
+      phase: "downloading",
+      received: 5,
+      total: 10,
+      percent: 50,
+      filePath: "",
+      error: "",
+    });
+    dlBtn!.click();
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(vi.mocked(bridge.downloadUpdate)).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).toContain("正在下载更新… 50%");
+
+    // 主进程推送下载完成 → 重启并安装按钮出现
+    const downloadState = (globalThis as any).__updateDownloadCallback;
+    expect(downloadState).toBeTruthy();
+    downloadState({
+      phase: "downloaded",
+      received: 10,
+      total: 10,
+      percent: 100,
+      filePath: "/tmp/CNB-Tools.exe",
+      error: "",
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    const downloadedBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (b) => (b.textContent || "").includes("重启并安装"),
+    );
+    expect(downloadedBtn).toBeTruthy();
+    downloadedBtn!.click();
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(vi.mocked(bridge.installUpdate)).toHaveBeenCalledTimes(1);
+
+    // 安装失败（降级）→ 显示错误信息
+    vi.mocked(bridge.installUpdate).mockResolvedValue({
+      ok: false,
+      message: "安装更新失败: 目录不可写",
+    });
+    // 重新点击（installingUpdate 已复位）
+    downloadedBtn!.click();
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(document.body.textContent).toContain("安装更新失败: 目录不可写");
 
     wrapper.unmount();
   }, 30_000);
