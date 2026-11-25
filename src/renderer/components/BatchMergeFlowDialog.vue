@@ -2,13 +2,13 @@
   <BatchMergeConfirmDialog
     ref="confirmRef"
     v-model:show="showConfirm"
+    :history="merge.history"
     :log-lines="mergeLogLines"
     :repo="projects.selectedRepo"
     :run="merge.run"
     :source-branches="projects.selectedSourceBranch ? [projects.selectedSourceBranch] : []"
     :target-branches="merge.selectedTargets"
     :target-count="merge.selectedTargets.length"
-    :history="merge.history"
     @remove-target="onRemoveTarget"
     @run-finish="onMergeFinished"
   />
@@ -16,8 +16,8 @@
   <BatchMergeFinishDialog
     v-model:show="showFinish"
     :log-lines="mergeLogLines"
-    :summary="finishSummary"
     :repo="projects.selectedRepo"
+    :summary="finishSummary"
     @retry-failed="onRetryFailed"
   />
 </template>

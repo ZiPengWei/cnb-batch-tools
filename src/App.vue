@@ -673,9 +673,9 @@
             />
 
             <n-modal
-              :show="!!auth.expiredMessage"
-              preset="dialog"
               :mask-closable="false"
+              preset="dialog"
+              :show="!!auth.expiredMessage"
             >
               <template #header>
                 登录已过期

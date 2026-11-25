@@ -1,10 +1,10 @@
 <template>
   <n-input
     ref="inputRef"
-    :value="inner"
     clearable
     :disabled="disabled"
     :placeholder="placeholder"
+    :value="inner"
     @update:value="onInput"
   />
 </template>
