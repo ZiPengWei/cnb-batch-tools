@@ -1111,7 +1111,7 @@ const latestVersion = ref('')
 const hasUpdate = ref(false)
 const updateChecking = ref(false)
 const updateError = ref('')
-const releaseUrl = ref('https://github.com/ZiPengWei/batch-tools/releases/latest')
+const releaseUrl = ref('https://github.com/ZiPengWei/cnb-batch-tools/releases/latest')
 
 function applyUpdateStatus(s: UpdateStatus | null | undefined) {
   if (!s) return

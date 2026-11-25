@@ -6,7 +6,7 @@ import axios from "axios";
  * 不做自动下载与强制更新，用户自行前往 Release 页下载。
  */
 
-export const GITHUB_REPO = "ZiPengWei/batch-tools";
+export const GITHUB_REPO = "ZiPengWei/cnb-batch-tools";
 
 export const RELEASES_PAGE_URL = `https://github.com/${GITHUB_REPO}/releases/latest`;
 

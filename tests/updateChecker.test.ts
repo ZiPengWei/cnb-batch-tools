@@ -109,7 +109,7 @@ describe("fetchLatestRelease", () => {
 
   it("Release 页地址指向 latest", () => {
     expect(RELEASES_PAGE_URL).toBe(
-      "https://github.com/ZiPengWei/batch-tools/releases/latest"
+      "https://github.com/ZiPengWei/cnb-batch-tools/releases/latest"
     );
   });
 });
