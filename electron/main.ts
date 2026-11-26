@@ -242,7 +242,21 @@ ipcMain.handle("app:install-update", () => {
     return { ok: false, message: "未找到已下载的更新文件，请重新下载" };
   }
   try {
-    installUpdate(filePath);
+    const result = installUpdate(filePath);
+    // 搬家安装（原位置只读/dmg 内运行）成功：通知用户新版装到了哪里，旧入口可删除
+    if (result.migrated && result.installDir) {
+      try {
+        const n = new Notification({
+          title: "更新已自动安装",
+          body: `新版本已安装到 ${result.installDir}，即将从该位置启动。`,
+          silent: false,
+        });
+        n.on("click", () => showMainWindow());
+        n.show();
+      } catch {
+        /* 通知失败不影响安装 */
+      }
+    }
     // 安装脚本已在后台排队：稍候退出，由脚本完成"替换 + 重启"
     setTimeout(() => {
       app.quit();

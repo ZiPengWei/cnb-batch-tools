@@ -73,7 +73,7 @@
   - 应用内更新（手写轻量方案，不用 electron-updater：portable exe 不支持其自动替换、macOS 未签名不可用 Squirrel）。
   - 下载：按平台从 Release assets 匹配 `CNB-Tools.exe/.dmg`，axios stream 下载 + 进度推送（`cnb:update-download`），GitHub asset sha256 digest 校验完整性；Windows 优先下载到 exe 同目录（`PORTABLE_EXECUTABLE_DIR`），不可写降级下载目录。
   - 安装 Windows：生成纯 ASCII 替换脚本（`%~dp0` 引用自身目录规避中文路径编码问题）等旧进程退出后 move 覆盖 + 重启；目录不可写抛错由调用方降级。
-  - 安装 macOS：`hdiutil attach` → `replaceMacApp`（复制 .app 为临时名 → 双 rename 原子替换，旧版保留 `.old` 供回滚）→ 删 dmg → 延迟 `open` 新版；启动时 `cleanupMacOldBundle` 清理上次备份；Node 写入的文件不带 quarantine，安装后不弹"已损坏"。
+  - 安装 macOS：`resolveMacInstallDir` 静默决策安装目录（原地可替换则原地；从 dmg 内/转译路径运行或目录不可写时自动搬装到 `/Applications`，失败退 `~/Applications`，全不可写才抛错）→ `hdiutil attach` → `replaceMacApp`（复制 .app 为临时名 → 双 rename 原子替换，目标无旧版跳过备份；旧版保留 `.old` 供回滚，换入失败自动回滚原位）→ 清 quarantine → 删 dmg → 延迟 `open` 新版；搬装成功经主进程发系统通知；启动时 `cleanupMacOldBundle` 清理上次备份。
 - `src/main/services/mergeService.ts`
   - 很薄的一层入口，实际逻辑委托给 merge strategy。
 - `src/main/services/mergeStrategies/merge.ts`

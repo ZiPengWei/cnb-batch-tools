@@ -1,6 +1,7 @@
 import { execFileSync, spawn } from "child_process";
 import { createHash } from "crypto";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import axios from "axios";
 import { GITHUB_REPO } from "./updateChecker";
@@ -14,7 +15,11 @@ import { GITHUB_REPO } from "./updateChecker";
  *   （%~dp0 引用自身目录，规避中文路径编码问题）等旧进程退出后覆盖并重启。
  * - macOS：下载 dmg → hdiutil 挂载 → 复制 .app 为临时名 → 双 rename 原子替换
  *   （旧版保留为 .old 供回滚，下次启动清理）→ 延迟启动新版 → 退出当前进程。
- * Node 写入的文件不带 Gatekeeper 隔离标记（quarantine），安装后打开不弹"已损坏"。
+ *   应用从只读/转译位置运行（dmg 内、AppTranslocation）或目录不可写时，
+ *   自动静默安装到 /Applications（失败退 ~/Applications）并从新位置启动，
+ *   无需用户手动拖拽。
+ * Node 写入的文件不带 Gatekeeper 隔离标记（quarantine），安装后打开不弹"已损坏"；
+ * 兜底起见换入后统一清一次 quarantine（对无标记的应用无害）。
  */
 
 const RELEASE_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
@@ -57,6 +62,10 @@ export interface InstallResult {
   ok: boolean;
   /** auto: 安装脚本已启动，应用即将退出并被替换重启 */
   mode: "auto";
+  /** macOS：原位置只读/转译，更新被静默安装到了标准位置（/Applications 等） */
+  migrated?: boolean;
+  /** macOS：新版的实际安装目录（migrated 时用于提示用户） */
+  installDir?: string;
 }
 
 /** 解析 GitHub asset 的 digest 字段（"sha256:hex"）为纯 hex；无/非法时返回空串 */
@@ -138,14 +147,69 @@ export function sha256File(filePath: string): string {
   return hash.digest("hex");
 }
 
-/** 目录是否可写 */
+/** 目录是否可写（真实写探针，比 accessSync 可靠——ACL/只读挂载下 access 可能误报） */
 export function isDirWritable(dir: string): boolean {
+  if (!dir) return false;
   try {
-    fs.accessSync(dir, fs.constants.W_OK);
+    const probe = path.join(dir, `.cnb-write-probe-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    fs.writeFileSync(probe, "probe");
+    fs.unlinkSync(probe);
     return true;
   } catch {
     return false;
   }
+}
+
+/** 确保目录存在且可写（mkdir -p + 写探针）；失败抛出带路径的错误 */
+function ensureDirWritable(dir: string): void {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`无法创建安装目录 ${dir}：${msg}`);
+  }
+  if (!isDirWritable(dir)) {
+    throw new Error(`安装目录不可写：${dir}`);
+  }
+}
+
+/**
+ * 决定 macOS 更新的安装目录（静默处理，无需用户拖拽）：
+ * - 当前 bundle 所在目录可写且不在挂载镜像/转译路径下 → 原地替换（常规路径）；
+ * - 否则（dmg 内直接运行、AppTranslocation、目录只读/权限不足）
+ *   静默搬装到 /Applications，不可写再退 ~/Applications；
+ * - 全部不可写才抛错（此时才需要用户介入）。
+ */
+export function resolveMacInstallDir(opts?: {
+  appsDir?: string;
+  homeAppsDir?: string;
+  execPath?: string;
+}): { dir: string; migrated: boolean } {
+  const execPath = opts?.execPath ?? process.execPath;
+  const bundleDir = macBundleDirFrom(execPath);
+  const inPlace =
+    isDirWritable(bundleDir) &&
+    !execPath.includes("/Volumes/") &&
+    !execPath.includes("AppTranslocation");
+  if (inPlace) {
+    return { dir: bundleDir, migrated: false };
+  }
+  const candidates = [
+    opts?.appsDir ?? "/Applications",
+    opts?.homeAppsDir ?? path.join(os.homedir(), "Applications"),
+  ];
+  const failures: string[] = [];
+  for (const dir of candidates) {
+    try {
+      ensureDirWritable(dir);
+      return { dir, migrated: true };
+    } catch (e) {
+      failures.push(e instanceof Error ? e.message : String(e));
+    }
+  }
+  throw new Error(
+    `当前应用位置不可更新且无法自动安装：${failures.join("；")}。请手动把新版拖入「应用程序」文件夹`,
+  );
 }
 
 /** 下载目标：目录可写返回完整路径，否则返回空串 */
@@ -261,13 +325,17 @@ export async function downloadUpdateAsset(
  * 执行安装（按当前平台分发）。成功后安装脚本已在后台排队，
  * 调用方随后 app.quit() 即可完成"退出 → 替换 → 重启"。
  * 失败抛错，由调用方做降级（mac 挂载镜像手动拖 / win 打开所在文件夹）。
+ * macOS opts 仅测试注入用（appsDir/homeAppsDir/execPath）。
  */
-export function installUpdate(filePath: string): InstallResult {
+export function installUpdate(
+  filePath: string,
+  opts?: { appsDir?: string; homeAppsDir?: string; execPath?: string },
+): InstallResult {
   if (process.platform === "darwin") {
-    installMac(filePath);
-  } else {
-    installWindows(filePath);
+    const mac = installMac(filePath, opts);
+    return { ok: true, mode: "auto", migrated: mac.migrated, installDir: mac.installDir };
   }
+  installWindows(filePath);
   return { ok: true, mode: "auto" };
 }
 
@@ -292,9 +360,14 @@ function installWindows(filePath: string): void {
   child.unref();
 }
 
-/** 当前 app bundle 所在目录（.app 的父目录）。execPath 形如 .../CNB-Tools.app/Contents/MacOS/CNB-Tools，上四级。 */
+/** 由 execPath 推导 app bundle 所在目录（.app 的父目录）。execPath 形如 .../CNB-Tools.app/Contents/MacOS/CNB-Tools，上四级。 */
+function macBundleDirFrom(execPath: string): string {
+  return path.resolve(execPath, "..", "..", "..", "..");
+}
+
+/** 当前 app bundle 所在目录 */
 function macBundleDir(): string {
-  return path.resolve(process.execPath, "..", "..", "..", "..");
+  return macBundleDirFrom(process.execPath);
 }
 
 /** 清理 macOS 上一次替换保留的旧版备份（下次启动时调用） */
@@ -310,20 +383,11 @@ export function cleanupMacOldBundle(): void {
   }
 }
 
-/** macOS 安装：挂载 dmg → 替换 .app → 延迟启动新版 */
-function installMac(dmgPath: string): void {
-  // 应用正从挂载镜像/dmg 内或 Gatekeeper 转译路径运行时无法原地替换，
-  // 提前给出明确指引（否则 fs 操作会抛出难懂的 ENOTDIR/EROFS 等系统码）
-  if (process.execPath.includes("/Volumes/") || process.execPath.includes("AppTranslocation")) {
-    throw new Error(
-      "应用正在安装镜像（dmg）内直接运行。请先退出应用，把 CNB-Tools.app 拖入「应用程序」文件夹，再从「应用程序」启动后更新",
-    );
-  }
-  const bundleDir = macBundleDir();
-  if (!isDirWritable(bundleDir)) {
-    throw new Error(`目录不可写：${bundleDir}，请把应用移到「应用程序」或个人目录后重试`);
-  }
-
+/** macOS 安装：决定安装目录 → 挂载 dmg → 替换 .app → 延迟启动新版。返回迁移信息供主进程提示。 */
+function installMac(
+  dmgPath: string,
+  opts?: { appsDir?: string; homeAppsDir?: string; execPath?: string },
+): { migrated: boolean; installDir: string } {
   // 0. 预清理：上次失败后 openPath 降级挂载的镜像可能还挂着，同名卷先推出（失败无害）
   try {
     execFileSync("hdiutil", ["detach", `/Volumes/CNB-Tools`, "-force"], {
@@ -334,7 +398,10 @@ function installMac(dmgPath: string): void {
     /* 卷不存在/未挂载，忽略 */
   }
 
-  // 1. 挂载（-nobrowse 避免 Finder 侧栏弹窗）
+  // 1. 安装目录静默决策：原地可替换则原地；dmg 内运行/转译/不可写则自动搬装到标准位置
+  const { dir: bundleDir, migrated } = resolveMacInstallDir(opts);
+
+  // 2. 挂载（-nobrowse 避免 Finder 侧栏弹窗）
   let attachOut: string;
   try {
     attachOut = execFileSync("hdiutil", ["attach", "-nobrowse", "-noautoopen", dmgPath], {
@@ -354,13 +421,14 @@ function installMac(dmgPath: string): void {
     const msg = e instanceof Error ? e.message : String(e);
     throw new Error(`替换应用失败（挂载点：${volume}；安装目录：${bundleDir}）：${msg}`);
   } finally {
-    // 2. 尽力卸载（失败不影响安装结果）
+    // 3. 尽力卸载（失败不影响安装结果）
     try {
       execFileSync("hdiutil", ["detach", volume, "-force"], { encoding: "utf8" });
     } catch {
       /* 卸载失败忽略 */
     }
   }
+  return { migrated, installDir: bundleDir };
 }
 
 /**
@@ -390,26 +458,39 @@ export function replaceMacApp(
   const oldPath = path.join(bundleDir, MAC_OLD_NAME);
   let movedOld = false;
   try {
-    // 双 rename 原子替换：旧版移入 .old（保留回滚），临时名换入正式名
-    fs.rmSync(oldPath, { recursive: true, force: true });
-    renameImpl(bundlePath, oldPath);
-    movedOld = true;
+    // 双 rename 原子替换：旧版移入 .old（保留回滚），临时名换入正式名。
+    // 搬家安装（目标目录没有旧版）时跳过备份 rename，直接换入。
+    if (fs.existsSync(bundlePath)) {
+      fs.rmSync(oldPath, { recursive: true, force: true });
+      renameImpl(bundlePath, oldPath);
+      movedOld = true;
+    }
     try {
       renameImpl(tmpPath, bundlePath);
     } catch (e2) {
-      // 第二次失败：旧版已被移入 .old，必须回滚原位，否则应用"消失"
-      try {
-        renameImpl(oldPath, bundlePath);
-      } catch {
-        /* 回滚失败：.old 保留在原目录旁，可手动改回 */
+      // 换入失败：旧版已被移入 .old 时必须回滚原位，否则应用"消失"
+      if (movedOld) {
+        try {
+          renameImpl(oldPath, bundlePath);
+        } catch {
+          /* 回滚失败：.old 保留在原目录旁，可手动改回 */
+        }
       }
       throw e2;
     }
-    // 清理 dmg，延迟启动新版（等当前进程退出，避免新旧并存）
+    // 清理 dmg，清 quarantine（兼容非本应用下载来源的 dmg 卷内文件继承隔离标记，
+    // 未签名应用带 quarantine 会被 Gatekeeper 拦成"已损坏"），延迟启动新版
     try {
       fs.unlinkSync(dmgPath);
     } catch {
       /* 删除失败忽略 */
+    }
+    try {
+      execFileSync("/usr/bin/xattr", ["-dr", "com.apple.quarantine", bundlePath], {
+        stdio: "pipe",
+      });
+    } catch {
+      /* 无标记或 xattr 失败均忽略（open 仍可进行） */
     }
     const child = spawn("/bin/sh", ["-c", `sleep 1; /usr/bin/open "${bundlePath}"`], {
       detached: true,

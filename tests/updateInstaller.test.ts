@@ -38,6 +38,7 @@ import {
   parseMountPoint,
   pickAssetForPlatform,
   replaceMacApp,
+  resolveMacInstallDir,
   sha256File,
   WIN_ASSET_NAME,
 } from "../src/main/services/updateInstaller";
@@ -343,24 +344,28 @@ describe("cleanupMacOldBundle", () => {
 
 describe("安装加固（错误上下文与回滚）", () => {
   it("cpSync 失败时错误包含源与目标路径", () => {
-    // volume 里的"app"实际是文件 → findAppInVolume 找不到直接抛；改为验证卷内 app 内部异常
+    // bundleDir 被一个文件占用 → 复制目标 tmpPath 必然 ENOTDIR 失败，
+    // 验证错误信息带完整源/目标路径上下文
     const base = path.join(process.cwd(), "e2e", "tmp-installer");
     fs.mkdirSync(base, { recursive: true });
     const root = fs.mkdtempSync(path.join(base, "hard-"));
     const volume = path.join(root, "volume");
-    const bundleDir = path.join(root, "Applications");
     fs.mkdirSync(volume);
-    fs.mkdirSync(bundleDir);
-    // app 根是真目录但内部有"文件当目录"的结构
-    const badApp = path.join(volume, MAC_APP_NAME);
-    fs.mkdirSync(path.join(badApp, "Contents"), { recursive: true });
-    fs.writeFileSync(path.join(badApp, "Contents", "Frameworks"), "not-a-dir");
+    // 卷内正常结构的新版应用
+    const appSrc = path.join(volume, MAC_APP_NAME);
+    fs.mkdirSync(path.join(appSrc, "Contents"), { recursive: true });
+    fs.writeFileSync(path.join(appSrc, "Contents", "new.txt"), "new");
+    // bundleDir 是文件 → cpSync 目标不可创建
+    const bundleDir = path.join(root, "occupied");
+    fs.writeFileSync(bundleDir, "occupied");
     const dmgPath = path.join(root, "x.dmg");
     fs.writeFileSync(dmgPath, "dmg");
 
     expect(() => replaceMacApp(volume, bundleDir, dmgPath)).toThrow(
-      /替换分支失败（应用：|not a directory|No such file/,
+      /复制安装文件失败（源：.*；目标：.*）/,
     );
+    // 旧版概念不适用（目标即坏路径），dmg 未被消费
+    expect(fs.existsSync(dmgPath)).toBe(true);
   });
 
   it("第二次 rename 失败时回滚旧版原位（应用不消失）", () => {
@@ -428,3 +433,103 @@ describe("安装加固（错误上下文与回滚）", () => {
     expect(fs.readFileSync(path.join(bundleDir, MAC_OLD_NAME, "Contents", "old.txt"), "utf8")).toBe("old");
   });
 });
+
+describe("resolveMacInstallDir（静默搬家决策）", () => {
+  afterEach(() => {
+    Object.defineProperty(process, "execPath", { value: originalExecPath });
+  });
+
+  function fixedRoot(name: string): string {
+    const root = path.join(process.cwd(), "e2e", "tmp-installer", name);
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.mkdirSync(root, { recursive: true });
+    return root;
+  }
+
+  it("bundle 可写且正常路径 → 原地替换", () => {
+    const root = fixedRoot("rd-inplace");
+    const bundleDir = path.join(root, "Applications");
+    fs.mkdirSync(path.join(bundleDir, MAC_APP_NAME, "Contents", "MacOS"), { recursive: true });
+    setExecPath(path.join(bundleDir, MAC_APP_NAME, "Contents", "MacOS", "CNB-Tools"));
+
+    const r = resolveMacInstallDir({ appsDir: path.join(root, "Apps1"), homeAppsDir: path.join(root, "Apps2") });
+    expect(r.migrated).toBe(false);
+    expect(r.dir).toBe(bundleDir);
+  });
+
+  it("execPath 在挂载镜像内（/Volumes/）→ 搬家到 appsDir", () => {
+    const root = fixedRoot("rd-volumes");
+    const appsDir = path.join(root, "Applications");
+    // 造一个路径含 /Volumes/ 的假 bundle 位置（目录本身可写，但检测到镜像路径强制搬家）
+    const fakeBundleRoot = path.join(root, "Volumes", "CNB-Tools 1");
+    fs.mkdirSync(path.join(fakeBundleRoot, MAC_APP_NAME, "Contents", "MacOS"), { recursive: true });
+    setExecPath(path.join(fakeBundleRoot, MAC_APP_NAME, "Contents", "MacOS", "CNB-Tools"));
+
+    const r = resolveMacInstallDir({ appsDir, homeAppsDir: path.join(root, "HomeApps") });
+    expect(r.migrated).toBe(true);
+    expect(r.dir).toBe(appsDir);
+    expect(fs.existsSync(appsDir)).toBe(true);
+  });
+
+  it("AppTranslocation 路径 → 搬家", () => {
+    const root = fixedRoot("rd-translocation");
+    const appsDir = path.join(root, "Applications");
+    const fake = path.join(root, "AppTranslocation", "d", "CNB-Tools.app", "Contents", "MacOS");
+    fs.mkdirSync(fake, { recursive: true });
+    setExecPath(path.join(fake, "CNB-Tools"));
+
+    const r = resolveMacInstallDir({ appsDir, homeAppsDir: path.join(root, "HomeApps") });
+    expect(r.migrated).toBe(true);
+    expect(r.dir).toBe(appsDir);
+  });
+
+  it("bundle 位置不可写（被文件占用）→ 搬家", () => {
+    const root = fixedRoot("rd-unwritable");
+    const appsDir = path.join(root, "Applications");
+    // blocker 是文件 → 以它为父目录写探针必然 ENOTDIR → 判定不可写
+    fs.writeFileSync(path.join(root, "blocker"), "occupied");
+    setExecPath(path.join(root, "blocker", MAC_APP_NAME, "Contents", "MacOS", "CNB-Tools"));
+
+    const r = resolveMacInstallDir({ appsDir, homeAppsDir: path.join(root, "HomeApps") });
+    expect(r.migrated).toBe(true);
+    expect(r.dir).toBe(appsDir);
+  });
+
+  it("appsDir 不可用时退 homeAppsDir", () => {
+    const root = fixedRoot("rd-fallback");
+    // appsDir 被一个文件占用 → ensureDirWritable 失败 → 降级 homeAppsDir
+    const appsDir = path.join(root, "AppsDeny");
+    const homeAppsDir = path.join(root, "HomeApps");
+    fs.writeFileSync(appsDir, "occupied");
+    fs.mkdirSync(homeAppsDir, { recursive: true });
+
+    const r = resolveMacInstallDir({
+      appsDir,
+      homeAppsDir,
+      execPath: path.join(root, "Volumes", "x", MAC_APP_NAME, "Contents", "MacOS", "CNB-Tools"),
+    });
+    expect(r.migrated).toBe(true);
+    expect(r.dir).toBe(homeAppsDir);
+  });
+
+  it("全部候选不可用时抛错并带指引", () => {
+    const root = fixedRoot("rd-all-deny");
+    const appsDir = path.join(root, "AppsDeny");
+    const homeAppsDir = path.join(root, "HomeDeny");
+    // 两个候选都被文件占用 → mkdirSync EEXIST → 全部失败
+    fs.writeFileSync(appsDir, "occupied");
+    fs.writeFileSync(homeAppsDir, "occupied");
+
+    expect(() =>
+      resolveMacInstallDir({
+        appsDir,
+        homeAppsDir,
+        execPath: path.join(root, "Volumes", "x", MAC_APP_NAME, "Contents", "MacOS", "CNB-Tools"),
+      }),
+    ).toThrow(/拖入「应用程序」/);
+  });
+});
+
+// 注：installMac 的搬家安装全链路（真实 hdiutil 挂载 + 从 /Volumes/ 卷内运行 →
+// 搬装到标准位置）由 e2e/tmp-silent-migrate.cjs Node 直跑脚本覆盖——
+// 单测环境无法模拟 /Volumes/ 真实挂载点（parseMountPoint 硬性要求该前缀）。
