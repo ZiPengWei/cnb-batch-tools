@@ -75,3 +75,7 @@ playwright-report/
 
 # --- 图像生成工作目录 ---
 output/
+
+# 测试临时产物（安装器真实环境验证等）
+e2e/tmp-installer/
+e2e/tmp-real/
