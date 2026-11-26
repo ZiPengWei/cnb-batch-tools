@@ -248,6 +248,12 @@ export async function downloadUpdateAsset(
   if (!target) {
     throw new Error("下载目录不可写，无法自动下载更新");
   }
+  // 旧文件（上次下载/失败的残留）先删除：若正被挂载引用也能清掉引用源
+  try {
+    fs.rmSync(target, { force: true });
+  } catch {
+    /* 删除失败忽略，覆盖写兜底 */
+  }
   return downloadAsset(asset, target, onProgress);
 }
 
@@ -306,19 +312,47 @@ export function cleanupMacOldBundle(): void {
 
 /** macOS 安装：挂载 dmg → 替换 .app → 延迟启动新版 */
 function installMac(dmgPath: string): void {
+  // 应用正从挂载镜像/dmg 内或 Gatekeeper 转译路径运行时无法原地替换，
+  // 提前给出明确指引（否则 fs 操作会抛出难懂的 ENOTDIR/EROFS 等系统码）
+  if (process.execPath.includes("/Volumes/") || process.execPath.includes("AppTranslocation")) {
+    throw new Error(
+      "应用正在安装镜像（dmg）内直接运行。请先退出应用，把 CNB-Tools.app 拖入「应用程序」文件夹，再从「应用程序」启动后更新",
+    );
+  }
   const bundleDir = macBundleDir();
   if (!isDirWritable(bundleDir)) {
     throw new Error(`目录不可写：${bundleDir}，请把应用移到「应用程序」或个人目录后重试`);
   }
 
+  // 0. 预清理：上次失败后 openPath 降级挂载的镜像可能还挂着，同名卷先推出（失败无害）
+  try {
+    execFileSync("hdiutil", ["detach", `/Volumes/CNB-Tools`, "-force"], {
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+  } catch {
+    /* 卷不存在/未挂载，忽略 */
+  }
+
   // 1. 挂载（-nobrowse 避免 Finder 侧栏弹窗）
-  const attachOut = execFileSync("hdiutil", ["attach", "-nobrowse", "-noautoopen", dmgPath], {
-    encoding: "utf8",
-  });
+  let attachOut: string;
+  try {
+    attachOut = execFileSync("hdiutil", ["attach", "-nobrowse", "-noautoopen", dmgPath], {
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+  } catch (e: any) {
+    const detail = String(e?.stderr || e?.message || e).trim();
+    throw new Error(`挂载安装镜像失败：${detail || "hdiutil attach 异常"}`);
+  }
   const volume = parseMountPoint(attachOut);
   if (!volume) throw new Error("无法定位安装镜像挂载点");
   try {
     replaceMacApp(volume, bundleDir, dmgPath);
+  } catch (e) {
+    // 包上下文：出错时能直接看出是哪个环节、哪些路径
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`替换应用失败（挂载点：${volume}；安装目录：${bundleDir}）：${msg}`);
   } finally {
     // 2. 尽力卸载（失败不影响安装结果）
     try {
@@ -334,18 +368,43 @@ function installMac(dmgPath: string): void {
  * 找到卷内 .app → 复制为临时名 → 双 rename 原子替换（旧版保留 .old）→ 删 dmg → 延迟启动新版。
  * 任一步失败时清理临时副本并抛错，旧版保持不动。
  */
-export function replaceMacApp(volume: string, bundleDir: string, dmgPath: string): void {
+export function replaceMacApp(
+  volume: string,
+  bundleDir: string,
+  dmgPath: string,
+  /** 供测试注入；生产使用真实 fs.renameSync */
+  renameImpl: (from: string, to: string) => void = (from, to) =>
+    fs.renameSync(from, to),
+): void {
   const appSrc = findAppInVolume(volume);
   if (!appSrc) throw new Error("安装镜像内未找到应用");
   const tmpPath = path.join(bundleDir, `${MAC_TMP_PREFIX}${Date.now()}`);
-  fs.cpSync(appSrc, tmpPath, { recursive: true });
+  try {
+    fs.cpSync(appSrc, tmpPath, { recursive: true });
+  } catch (e) {
+    // 包装上下文：源/目标路径一并暴露，opendir/ENOTDIR 等系统码可一次定位
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`复制安装文件失败（源：${appSrc}；目标：${tmpPath}）：${msg}`);
+  }
+  const bundlePath = path.join(bundleDir, MAC_APP_NAME);
+  const oldPath = path.join(bundleDir, MAC_OLD_NAME);
+  let movedOld = false;
   try {
     // 双 rename 原子替换：旧版移入 .old（保留回滚），临时名换入正式名
-    const bundlePath = path.join(bundleDir, MAC_APP_NAME);
-    const oldPath = path.join(bundleDir, MAC_OLD_NAME);
     fs.rmSync(oldPath, { recursive: true, force: true });
-    fs.renameSync(bundlePath, oldPath);
-    fs.renameSync(tmpPath, bundlePath);
+    renameImpl(bundlePath, oldPath);
+    movedOld = true;
+    try {
+      renameImpl(tmpPath, bundlePath);
+    } catch (e2) {
+      // 第二次失败：旧版已被移入 .old，必须回滚原位，否则应用"消失"
+      try {
+        renameImpl(oldPath, bundlePath);
+      } catch {
+        /* 回滚失败：.old 保留在原目录旁，可手动改回 */
+      }
+      throw e2;
+    }
     // 清理 dmg，延迟启动新版（等当前进程退出，避免新旧并存）
     try {
       fs.unlinkSync(dmgPath);
@@ -358,12 +417,21 @@ export function replaceMacApp(volume: string, bundleDir: string, dmgPath: string
     });
     child.unref();
   } catch (e) {
-    // 替换失败：清理临时副本，旧版保持不动
+    // 替换失败：清理临时副本（已换入的正式名是回滚后的旧版，保持不动）
     try {
       fs.rmSync(tmpPath, { recursive: true, force: true });
     } catch {
       /* 清理失败忽略 */
     }
-    throw e;
+    // rename 阶段的错误一并包上下文（ENOENT/EBUSY 等系统码可定位到具体环节）
+    const raw = e instanceof Error ? e.message : String(e);
+    const msg = raw.startsWith("复制安装文件失败") || raw.startsWith("替换应用失败")
+      ? raw
+      : `替换分支失败（应用：${bundlePath}；备份：${oldPath}）：${raw}`;
+    // movedOld 且回滚也失败时旧版仍在 .old——错误信息里提示恢复方式
+    const hint = movedOld && !fs.existsSync(bundlePath)
+      ? `（原应用已备份在 ${oldPath}，可手动改名为 ${MAC_APP_NAME} 恢复）`
+      : "";
+    throw new Error(`${msg}${hint}`);
   }
 }

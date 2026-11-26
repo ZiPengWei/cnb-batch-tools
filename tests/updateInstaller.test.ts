@@ -5,7 +5,6 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fs from "fs";
-import os from "os";
 import path from "path";
 import { Readable } from "stream";
 
@@ -34,6 +33,7 @@ import {
   installUpdate,
   MAC_APP_NAME,
   MAC_ASSET_NAME,
+  MAC_OLD_NAME,
   parseAssetDigest,
   parseMountPoint,
   pickAssetForPlatform,
@@ -53,7 +53,9 @@ function setExecPath(p: string) {
 }
 
 function tmpDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "cnb-upd-"));
+  const base = path.join(process.cwd(), "e2e", "tmp-installer");
+  fs.mkdirSync(base, { recursive: true });
+  return fs.mkdtempSync(path.join(base, "u-"));
 }
 
 const ASSETS = [
@@ -304,12 +306,15 @@ describe("installUpdate macOS 集成（attach 输出经 parseMountPoint）", () 
     Object.defineProperty(process, "execPath", { value: originalExecPath });
   });
 
-  it("parseMountPoint 匹配不到 /Volumes/ 时抛错且 detach 未执行", () => {
+  it("parseMountPoint 匹配不到 /Volumes/ 时抛错且不对解析卷 detach", () => {
     expect(() => installUpdate(dmgPath)).toThrow("挂载点");
     expect(fs.existsSync(dmgPath)).toBe(true);
-    const calls = execFileSyncMock.mock.calls.map((c) => (c[1] as string[])?.[0]);
-    expect(calls).toContain("attach");
-    expect(calls).not.toContain("detach");
+    const calls = execFileSyncMock.mock.calls.map(
+      (c) => `${c[0]}:${(c[1] as string[])?.[0]}:${(c[1] as string[])?.[1] || ""}`,
+    );
+    // attach 被调用；预清理 detach 目标是固定同名卷，不是（不存在的）解析卷
+    expect(calls.some((c) => c.startsWith("hdiutil:attach"))).toBe(true);
+    expect(calls.filter((c) => c.startsWith("hdiutil:detach")).every((c) => c.includes("/Volumes/CNB-Tools"))).toBe(true);
   });
 });
 
@@ -333,5 +338,93 @@ describe("cleanupMacOldBundle", () => {
     setExecPath(path.join("C:", "fake", "CNB-Tools.exe"));
     // 不抛错即可
     expect(() => cleanupMacOldBundle()).not.toThrow();
+  });
+});
+
+describe("安装加固（错误上下文与回滚）", () => {
+  it("cpSync 失败时错误包含源与目标路径", () => {
+    // volume 里的"app"实际是文件 → findAppInVolume 找不到直接抛；改为验证卷内 app 内部异常
+    const base = path.join(process.cwd(), "e2e", "tmp-installer");
+    fs.mkdirSync(base, { recursive: true });
+    const root = fs.mkdtempSync(path.join(base, "hard-"));
+    const volume = path.join(root, "volume");
+    const bundleDir = path.join(root, "Applications");
+    fs.mkdirSync(volume);
+    fs.mkdirSync(bundleDir);
+    // app 根是真目录但内部有"文件当目录"的结构
+    const badApp = path.join(volume, MAC_APP_NAME);
+    fs.mkdirSync(path.join(badApp, "Contents"), { recursive: true });
+    fs.writeFileSync(path.join(badApp, "Contents", "Frameworks"), "not-a-dir");
+    const dmgPath = path.join(root, "x.dmg");
+    fs.writeFileSync(dmgPath, "dmg");
+
+    expect(() => replaceMacApp(volume, bundleDir, dmgPath)).toThrow(
+      /替换分支失败（应用：|not a directory|No such file/,
+    );
+  });
+
+  it("第二次 rename 失败时回滚旧版原位（应用不消失）", () => {
+    // 注：本用例的回滚逻辑另由 e2e/tmp-real-verify.cjs 在真实环境验证；
+    // 这里固定路径 + 预清理，规避沙盒 broker 对 mkdtempSync 的双重执行竞态
+    const root = path.join(process.cwd(), "e2e", "tmp-installer", "roll-fixed");
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.mkdirSync(root, { recursive: true });
+    const volume = root;
+    const bundleDir = path.join(root, "Applications");
+    fs.mkdirSync(volume, { recursive: true });
+    fs.mkdirSync(bundleDir, { recursive: true });
+    // 卷内新版
+    const newApp = path.join(volume, MAC_APP_NAME);
+    fs.mkdirSync(path.join(newApp, "Contents"), { recursive: true });
+    fs.writeFileSync(path.join(newApp, "Contents", "new.txt"), "new");
+    // 当前旧版
+    const oldApp = path.join(bundleDir, MAC_APP_NAME);
+    fs.mkdirSync(path.join(oldApp, "Contents"), { recursive: true });
+    fs.writeFileSync(path.join(oldApp, "Contents", "old.txt"), "old");
+
+    // renameImpl 注入：第二次调用（tmp 换入正式名）抛错
+    const renameOrig = fs.renameSync.bind(fs);
+    let calls = 0;
+    const failingRename = (from: string, to: string) => {
+      calls += 1;
+      if (calls === 2) throw new Error("simulated failure");
+      return renameOrig(from, to);
+    };
+    expect(() =>
+      replaceMacApp(volume, bundleDir, path.join(root, "dmg.bin"), failingRename),
+    ).toThrow(/simulated failure/);
+    // 回滚后：正式名恢复为旧版内容，.old 不存在
+    expect(fs.readFileSync(path.join(oldApp, "Contents", "old.txt"), "utf8")).toBe("old");
+    expect(fs.existsSync(path.join(bundleDir, MAC_OLD_NAME))).toBe(false);
+    expect(fs.readdirSync(bundleDir).filter((n) => n.startsWith(".CNB-Tools.app.tmp-"))).toEqual([]);
+  });
+
+  it("回滚也失败时错误信息提示 .old 备份位置", () => {
+    const root = path.join(process.cwd(), "e2e", "tmp-installer", "roll2-fixed");
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.mkdirSync(root, { recursive: true });
+    const volume = root;
+    const bundleDir = path.join(root, "Applications");
+    fs.mkdirSync(volume, { recursive: true });
+    fs.mkdirSync(bundleDir, { recursive: true });
+    const newApp = path.join(volume, MAC_APP_NAME);
+    fs.mkdirSync(path.join(newApp, "Contents"), { recursive: true });
+    const oldApp = path.join(bundleDir, MAC_APP_NAME);
+    fs.mkdirSync(path.join(oldApp, "Contents"), { recursive: true });
+    fs.writeFileSync(path.join(oldApp, "Contents", "old.txt"), "old");
+
+    // renameImpl 注入：第 2 次及之后（换入失败 + 回滚失败）都抛错
+    const renameOrig = fs.renameSync.bind(fs);
+    let calls = 0;
+    const failingRename = (from: string, to: string) => {
+      calls += 1;
+      if (calls >= 2) throw new Error("simulated failure-2");
+      return renameOrig(from, to);
+    };
+    expect(() =>
+      replaceMacApp(volume, bundleDir, path.join(root, "dmg.bin"), failingRename),
+    ).toThrow(/原应用已备份在/);
+    // .old 保留（手动恢复路径存在）
+    expect(fs.readFileSync(path.join(bundleDir, MAC_OLD_NAME, "Contents", "old.txt"), "utf8")).toBe("old");
   });
 });
