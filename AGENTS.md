@@ -51,8 +51,8 @@
   - 注意 App.vue 是 n-config-provider 的父级这一结构是历史决定，若后续重构应把内容下沉为 provider 的子组件，让 `useThemeVars` 正常注入。
 - Pinia stores 承担大部分渲染层状态：
   - `src/renderer/store/auth.ts` — CNB 认证（网页登录 Cookie / 访问令牌双模式，可切换账号、退出登录），本地持久化设置（localStorage key `cnb-auth`）、E2E 认证绕过；登录过期时经 `cnb:auth-expired` 事件弹出"是否重新登录"确认框，同意后自动弹出 CNB 登录窗口（`confirmRelogin` → 强制全新网页登录）。
-  - `src/renderer/store/projects.ts` — 仓库列表、分支列表与选择状态（仓库以完整路径字符串 `org/repo` 标识，存于 `selectedRepo`），含仓库置顶状态与服务端双向同步；分支走"快速路径 + 后台排序"两段加载，`applySortedBranches` 接收主进程 `cnb:branches-sorted` 推送平滑更新。
-  - `src/renderer/store/merge.ts` — 目标分支选择（按仓库记忆上次选择并持久化，切换仓库自动恢复；分支集合仅顺序变化时保留当前选择）、批量合并运行状态、流式日志、完成后系统通知（主窗口聚焦时跳过）、合并历史记录（localStorage key `cnb-merge-history`，最近 20 次，确认弹窗展示当前仓库的上次合并与最近记录）。
+  - `src/renderer/store/projects.ts` — 仓库列表、分支列表与选择状态（仓库以完整路径字符串 `org/repo` 标识，存于 `selectedRepo`），含仓库置顶状态与服务端双向同步；分支走"快速路径 + 后台排序"两段加载，`applySortedBranches` 接收主进程 `cnb:branches-sorted` 推送平滑更新；**上次会话现场持久化**（localStorage key `cnb-last-project`：repo/name/sourceBranch）——`loadProjects` 完成后自动恢复上次仓库（仓库仍在列表中才恢复）、分支加载后恢复上次源分支（`chooseSourceBranch` 统一记录源分支选择并持久化），配合 merge store 的目标分支记忆实现"关窗重开一切都在"。
+  - `src/renderer/store/merge.ts` — 目标分支选择（按仓库记忆上次选择并持久化，切换仓库自动恢复；分支集合仅顺序变化时保留当前选择；**仓库切换时强制走恢复分支**，防止新旧仓库分支集合恰好相同时跳过恢复）、批量合并运行状态、流式日志、完成后系统通知（主窗口聚焦时跳过）、合并历史记录（localStorage key `cnb-merge-history`，最近 20 次，确认弹窗展示当前仓库的上次合并与最近记录）。
 - 共享类型位于：
   - `src/shared/cnb/types.ts`
   - `src/renderer/ipc/types.ts`

@@ -1275,7 +1275,7 @@ function openRepoInBrowser(p: { id: string }) {
 }
 
 function onClickSourceBranch(name: string, e: MouseEvent) {
-  projects.selectedSourceBranch = name
+  projects.chooseSourceBranch(name)
   scrollEventTargetIntoView(e)
 }
 
@@ -1347,7 +1347,7 @@ function activateKbd(list: KbdList) {
     return
   }
   if (list === 'source') {
-    projects.selectedSourceBranch = key
+    projects.chooseSourceBranch(key)
     return
   }
   merge.toggleTarget(key)

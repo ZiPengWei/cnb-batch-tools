@@ -131,6 +131,8 @@ export const useMergeStore = defineStore("merge", {
     targetFilter: "",
     targets: [] as string[],
     selectedTargets: [] as string[],
+    /** 上次 setTargets 时所属的仓库（用于识别仓库切换，强制走恢复分支） */
+    lastTargetsRepo: "",
     logLines: [] as MergeLogLine[],
     running: false,
     activeRunId: "",
@@ -153,9 +155,15 @@ export const useMergeStore = defineStore("merge", {
      */
     setTargets(branches: string[]) {
       const next = branches.slice();
+      const repo = useProjectsStore().selectedRepo;
+      // 仓库变化时集合比较无意义（新仓库分支可能与旧仓库恰好相同），强制走恢复
+      const repoChanged = repo !== this.lastTargetsRepo;
+      this.lastTargetsRepo = repo;
       const prevSet = new Set(this.targets);
       const sameSet =
-        prevSet.size === next.length && next.every((b) => prevSet.has(b));
+        !repoChanged &&
+        prevSet.size === next.length &&
+        next.every((b) => prevSet.has(b));
       this.targets = next;
       const nextSet = new Set(next);
       if (sameSet) {
@@ -164,7 +172,6 @@ export const useMergeStore = defineStore("merge", {
         );
         return;
       }
-      const repo = useProjectsStore().selectedRepo;
       const saved = readRepoTargets()[repo] || [];
       this.selectedTargets = saved.filter((t) => nextSet.has(t));
     },

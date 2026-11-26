@@ -43,6 +43,9 @@ const projectsStoreMock = reactive({
   loadProjects: vi.fn(),
   selectProject: vi.fn(),
   loadAllBranches: vi.fn(),
+  chooseSourceBranch: vi.fn(function (this: any, name: string) {
+    projectsStoreMock.selectedSourceBranch = name;
+  }),
   setFilter: vi.fn(),
   togglePin: vi.fn(),
   get filteredItems() {

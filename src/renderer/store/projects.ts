@@ -11,6 +11,38 @@ const PINNED_REPOS_KEY = "cnb-pinned-repos";
 const LOCAL_PINS_KEY = "cnb-local-pinned-repos";
 /** 服务端置顶、但用户在应用内手动取消的仓库（刷新后不恢复置顶） */
 const UNPINNED_SERVER_PINS_KEY = "cnb-unpinned-server-pins";
+/** 上次会话的仓库选择与源分支（重开窗口/重启后自动恢复） */
+const LAST_PROJECT_KEY = "cnb-last-project";
+
+export interface LastProject {
+  repo: string;
+  name: string;
+  sourceBranch: string;
+}
+
+function readLastProject(): LastProject | null {
+  try {
+    const raw = localStorage.getItem(LAST_PROJECT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.repo === "string" &&
+      parsed.repo
+    ) {
+      return {
+        repo: parsed.repo,
+        name: typeof parsed.name === "string" ? parsed.name : parsed.repo,
+        sourceBranch:
+          typeof parsed.sourceBranch === "string" ? parsed.sourceBranch : "",
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
 
 function readStringList(key: string): string[] {
   try {
@@ -254,6 +286,19 @@ export const useProjectsStore = defineStore("projects", {
         );
         this.localPins = this.localPins.filter((id) => ids.has(id));
         this.persistPins();
+        // 自动恢复上次会话的仓库选择（重开窗口/重启后回到上次工作现场；
+        // 仓库已不在列表中——被删除/无权限——则不恢复）。目标分支与源分支
+        // 的记忆由 selectProject → loadAllBranches → merge.setTargets 链路接力恢复。
+        if (!this.selectedRepo) {
+          const last = readLastProject();
+          if (last && ids.has(last.repo)) {
+            const item = this.items.find((i) => i.id === last.repo);
+            await this.selectProject({
+              id: last.repo,
+              display: item?.display || last.name || last.repo,
+            });
+          }
+        }
       } catch (e) {
         const msg = String(e);
         this.error = msg ? `仓库列表刷新失败：${msg}` : "仓库列表刷新失败";
@@ -267,7 +312,39 @@ export const useProjectsStore = defineStore("projects", {
       this.selectedSourceBranch = "";
       this.sourceBranches = [];
       this.targetBranches = [];
+      // 持久化本次选择（同仓库重选保留源分支记忆，换仓库清空）
+      const prev = readLastProject();
+      this.persistLastProject({
+        repo: p.id,
+        name: p.display,
+        sourceBranch: prev && prev.repo === p.id ? prev.sourceBranch : "",
+      });
       await this.loadAllBranches();
+    },
+    /**
+     * 记录源分支选择并持久化（配合 selectProject / loadAllBranches 的恢复逻辑，
+     * 重开窗口/重启后自动回到上次的仓库与源分支）。
+     */
+    chooseSourceBranch(name: string) {
+      this.selectedSourceBranch = name;
+      const last = readLastProject();
+      if (last && last.repo === this.selectedRepo) {
+        this.persistLastProject({ ...last, sourceBranch: name });
+      } else if (this.selectedRepo) {
+        this.persistLastProject({
+          repo: this.selectedRepo,
+          name: this.selectedProjectName || this.selectedRepo,
+          sourceBranch: name,
+        });
+      }
+    },
+    /** 持久化上次会话选择（失败静默，不影响主流程） */
+    persistLastProject(last: LastProject) {
+      try {
+        localStorage.setItem(LAST_PROJECT_KEY, JSON.stringify(last));
+      } catch {
+        /* ignore */
+      }
     },
     async loadAllBranches() {
       if (!this.selectedRepo) return;
@@ -298,6 +375,18 @@ export const useProjectsStore = defineStore("projects", {
         const list = res.branches || [];
         this.sourceBranches = list;
         this.targetBranches = list;
+        // 恢复上次源分支：仅在未手动选择、且保存的分支仍在当前仓库列表中时
+        if (!this.selectedSourceBranch) {
+          const last = readLastProject();
+          if (
+            last &&
+            last.repo === this.selectedRepo &&
+            last.sourceBranch &&
+            list.includes(last.sourceBranch)
+          ) {
+            this.selectedSourceBranch = last.sourceBranch;
+          }
+        }
       } catch (e) {
         const msg = String(e);
         const friendly = msg ? `分支刷新失败：${msg}` : "分支刷新失败";
