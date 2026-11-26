@@ -36,7 +36,8 @@
                             </n-button>
                           </n-badge>
                         </template>
-                        <n-space vertical>
+                        <div class="update-popover">
+                          <n-space vertical>
                           <n-text :style="styles.caption">
                             当前版本 v{{ currentVersion || '?' }}
                           </n-text>
@@ -84,7 +85,7 @@
                                 depth="3"
                                 :style="styles.caption"
                               >
-                                已就绪，点击后将自动替换并重启应用
+                                已就绪，点击后自动替换并重启
                               </n-text>
                             </template>
                             <n-button
@@ -106,7 +107,7 @@
                               type="primary"
                               @click="openReleasePage"
                             >
-                              前往 Release 页手动下载
+                              前往 Release 页下载
                             </n-button>
                           </template>
                           <template v-else-if="updateError">
@@ -137,7 +138,8 @@
                           >
                             检查更新
                           </n-button>
-                        </n-space>
+                          </n-space>
+                        </div>
                       </n-popover>
                     </n-space>
                   </template>
@@ -1526,6 +1528,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 更新提示 Popover：固定宽度防止内容过宽导致 bottom-end 定位左溢出屏幕被裁剪 */
+.update-popover {
+  width: 264px;
+}
+
 .triple-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
