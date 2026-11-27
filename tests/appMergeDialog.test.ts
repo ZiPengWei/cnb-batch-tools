@@ -61,6 +61,7 @@ const mergeStoreMock = reactive({
   targetFilter: "",
   targets: ["main"],
   selectedTargets: ["main"],
+  history: [] as any[],
   logLines: [] as Array<{ text: string; error?: boolean }>,
   running: false,
   activeRunId: "",
@@ -92,6 +93,7 @@ vi.mock("../src/renderer/store/projects", () => {
 vi.mock("../src/renderer/store/merge", () => {
   return {
     useMergeStore: () => mergeStoreMock,
+    formatRelativeTime: () => "刚刚",
   };
 });
 
@@ -641,11 +643,11 @@ describe("App 过滤防抖与 Shift 区间多选", () => {
     const wrapper = mount(App, { attachTo: document.body });
     await new Promise((r) => setTimeout(r, 0));
 
-    // 三个列表各自的过滤输入框（在对应卡片内部，避开认证卡里的令牌输入框）
+    // 三个列表各自的过滤输入框（在对应工作台列内部，避开认证面板里的令牌输入框）
     const cardInput = (label: string) => {
       const list = document.body.querySelector(`[aria-label="${label}"]`);
-      const card = list?.closest(".n-card");
-      return card?.querySelector<HTMLInputElement>(
+      const col = list?.closest(".wb-col");
+      return col?.querySelector<HTMLInputElement>(
         "input.n-input__input-el",
       ) as HTMLInputElement;
     };
@@ -726,10 +728,10 @@ describe("App 快捷键 / 窗口标题 / 仓库网页入口", () => {
 
     const active = document.activeElement;
     expect(active?.classList.contains("n-input__input-el")).toBe(true);
-    const repoCard = active
-      ?.closest(".n-card")
+    const repoCol = active
+      ?.closest(".wb-col")
       ?.querySelector('[aria-label="项目列表"]');
-    expect(repoCard).toBeTruthy();
+    expect(repoCol).toBeTruthy();
 
     wrapper.unmount();
   }, 30_000);
@@ -866,6 +868,94 @@ describe("App 应用内更新 UI", () => {
     await new Promise((r) => setTimeout(r, 0));
     await new Promise((r) => setTimeout(r, 0));
     expect(document.body.textContent).toContain("安装更新失败: 目录不可写");
+
+    wrapper.unmount();
+  }, 30_000);
+});
+
+describe("App 高频效率交互", () => {
+  it("点击核心环境按钮一键勾选所有可选核心分支（跳过同源）", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    projectsStoreMock.sourceBranches = ["dev", "feat/login"];
+    projectsStoreMock.selectedSourceBranch = "dev";
+    projectsStoreMock.targetBranches = ["dev", "test", "gray", "main"];
+    mergeStoreMock.targets = ["dev", "test", "gray", "main"];
+    mergeStoreMock.selectedTargets = [];
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const coreBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (b) => (b.textContent || "").includes("核心环境"),
+    );
+    expect(coreBtn).toBeTruthy();
+    (coreBtn as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(mergeStoreMock.addSelectedTargets).toHaveBeenCalledWith([
+      "test",
+      "gray",
+    ]);
+    wrapper.unmount();
+  }, 30_000);
+
+  it("Ctrl/Cmd+Enter 在就绪时直接打开合并确认弹窗", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    projectsStoreMock.selectedRepo = "org/demo";
+    projectsStoreMock.selectedSourceBranch = "feat";
+    mergeStoreMock.targets = ["main"];
+    mergeStoreMock.selectedTargets = ["main"];
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        metaKey: true,
+        bubbles: true,
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(document.body.textContent || "").toContain("确认合并");
+    wrapper.unmount();
+  }, 30_000);
+
+  it("过滤框按 Esc 立即清空已输入的过滤词", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const App = (await import("../src/App.vue")).default;
+
+    projectsStoreMock.sourceBranches = ["dev", "release/1"];
+
+    const wrapper = mount(App, { attachTo: document.body });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const srcList = document.body.querySelector('[aria-label="源分支列表"]');
+    const srcInput = srcList
+      ?.closest(".wb-col")
+      ?.querySelector<HTMLInputElement>("input.n-input__input-el");
+    expect(srcInput).toBeTruthy();
+
+    srcInput!.value = "release";
+    srcInput!.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 180));
+    expect(
+      document.body.querySelectorAll('[aria-label="源分支列表"] button').length,
+    ).toBe(1);
+
+    srcInput!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    expect(srcInput!.value).toBe("");
+    expect(
+      document.body.querySelectorAll('[aria-label="源分支列表"] button').length,
+    ).toBe(2);
 
     wrapper.unmount();
   }, 30_000);

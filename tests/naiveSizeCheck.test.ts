@@ -46,8 +46,8 @@ function findNaiveTagViolations(
 
   const configMatches = content.match(/<n-config-provider[^>]*>/gi) || [];
   for (const m of configMatches) {
+    // theme-overrides 由 src/renderer/ui/theme.ts 统一管理设计系统 Token，其余底层覆写仍禁止
     const forbidden = [
-      "theme-overrides",
       "cls-prefix",
       "namespace",
       "breakpoints",
@@ -62,8 +62,8 @@ function findNaiveTagViolations(
   return violations;
 }
 
-describe("Naive UI 使用规范：保持原生样式", () => {
-  it("所有 Naive UI 组件不使用 class/size/style，且不设置全局主题覆写", () => {
+describe("Naive UI 使用规范：统一主题与组件干净用法", () => {
+  it("所有 Naive UI 组件不直接使用内联 class/size/style，且不覆写底层前缀与断点", () => {
     const base = path.resolve(__dirname, "..", "src");
     const files = walk(base).filter((f) => f.endsWith(".vue"));
     const allViolations: {

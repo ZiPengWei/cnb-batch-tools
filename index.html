@@ -1,18 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CNB 批量合并工具</title>
-    <style>
-      /* 深色模式下避免 Vue 挂载前的白闪（主题色与 naive darkTheme body 底色一致） */
-      @media (prefers-color-scheme: dark) {
-        html {
-          background: #101014;
-        }
-      }
-    </style>
+    <script>
+      ;(function () {
+        try {
+          var mode = localStorage.getItem('cnb-theme-mode') || 'system'
+          var prefersDark =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+          var dark = mode === 'dark' || (mode !== 'light' && prefersDark)
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+          document.documentElement.style.background = dark ? '#0C0E12' : '#F4F6F9'
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

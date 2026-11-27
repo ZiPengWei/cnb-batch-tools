@@ -1,109 +1,67 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`组件快照 > App 初始渲染快照 1`] = `
-"<div data-v-7a7a37b1="" class="n-config-provider">
+"<div class="n-config-provider">
   <!---->
   <!--teleport start-->
   <!--teleport end-->
-  <div data-v-7a7a37b1="" role="none" class="n-flex app-root" style="display: flex; flex-direction: column; justify-content: start; flex-wrap: nowrap; gap: 16px; width: min(1618px, 94vw); height: 100vh; margin: 0px auto; padding: min(24px, 4vw); flex-grow: 1; flex-shrink: 0; box-sizing: border-box; --gl-list-transition: 160ms; --gl-list-radius: 2px; --gl-list-indicator: #18a058; --gl-list-indicator-hover: #36ad6a; --gl-list-bg-hover: color-mix(in srgb, #18a058 10%, transparent); --gl-list-bg-selected: color-mix(in srgb, #18a058 16%, transparent); --gl-list-bg-active: color-mix(in srgb, #0c7a43 22%, transparent); --gl-list-shadow-hover: none; --gl-list-shadow-selected: none; --gl-list-focus-ring: 0 0 0 2px color-mix(in srgb, #18a058 38%, transparent); --gl-list-text-selected: rgb(31, 34, 37);">
-    <div data-v-7a7a37b1="" style="flex: 0 0 auto; min-height: 0;">
-      <div data-v-7a7a37b1="" class="n-card n-card--content-segmented n-card--bordered" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-border-radius: 3px; --n-color: #fff; --n-color-modal: #fff; --n-color-popover: #fff; --n-color-embedded: rgb(250, 250, 252); --n-color-embedded-modal: rgb(250, 250, 252); --n-color-embedded-popover: rgb(250, 250, 252); --n-color-target: #18a058; --n-text-color: rgb(51, 54, 57); --n-line-height: 1.6; --n-action-color: rgb(250, 250, 252); --n-title-text-color: rgb(31, 34, 37); --n-title-font-weight: 500; --n-close-icon-color: rgba(102, 102, 102, 1); --n-close-icon-color-hover: rgba(102, 102, 102, 1); --n-close-icon-color-pressed: rgba(102, 102, 102, 1); --n-close-color-hover: rgba(0, 0, 0, .09); --n-close-color-pressed: rgba(0, 0, 0, .13); --n-border-color: rgb(239, 239, 245); --n-box-shadow: 0 1px 2px -2px rgba(0, 0, 0, .08), 0 3px 6px 0 rgba(0, 0, 0, .06), 0 5px 12px 4px rgba(0, 0, 0, .04); --n-padding-top: 19px; --n-padding-bottom: 20px; --n-padding-left: 24px; --n-font-size: 14px; --n-title-font-size: 18px; --n-close-size: 22px; --n-close-icon-size: 18px; --n-close-border-radius: 3px;">
-        <!---->
-        <div class="n-card-header" role="heading">
-          <div class="n-card-header__main" role="heading">
-            <div data-v-7a7a37b1="" role="none" class="n-space" style="display: flex; flex-direction: row; justify-content: flex-start; flex-wrap: wrap; margin-top: -4px; margin-bottom: -4px; align-items: center;">
-              <div role="none" style="max-width: 100%; margin-right: 12px; padding-top: 4px; padding-bottom: 4px;"> CNB 认证 </div>
-              <div role="none" style="max-width: 100%; padding-top: 4px; padding-bottom: 4px;">
-                <!---->
-                <div data-v-7a7a37b1="" class="n-badge n-badge--dot" style="--n-font-size: 12px; --n-font-family: v-sans, system-ui, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;; --n-color: #d03050; --n-ripple-color: #d03050; --n-bezier: cubic-bezier(.4, 0, .2, 1); --n-ripple-bezier: cubic-bezier(0, 0, .2, 1);"><button data-v-7a7a37b1="" class="n-button n-button--primary-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 400; --n-color: #0000; --n-color-hover: #0000; --n-color-pressed: #0000; --n-color-focus: #0000; --n-color-disabled: #0000; --n-ripple-color: #0000; --n-text-color: #18a058; --n-text-color-hover: #36ad6a; --n-text-color-pressed: #0c7a43; --n-text-color-focus: #36ad6a; --n-text-color-disabled: rgb(51, 54, 57); --n-border: none; --n-border-hover: none; --n-border-pressed: none; --n-border-focus: none; --n-border-disabled: none; --n-width: initial; --n-height: initial; --n-font-size: 14px; --n-padding: initial; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: initial;">
-                    <!---->
-                    <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true">
-                      <!---->
-                    </transition-stub><span class="n-button__content"> v1.0.0</span>
-                    <!---->
-                    <!---->
-                    <!---->
-                  </button>
-                  <transition-stub name="fade-in-scale-up-transition" appear="false" persisted="false" css="true">
-                    <!---->
-                  </transition-stub>
-                </div>
-                <!---->
-              </div>
-            </div>
-          </div>
-          <div class="n-card-header__extra">
-            <div data-v-7a7a37b1="" role="none" class="n-space" style="display: flex; flex-direction: row; justify-content: flex-start; flex-wrap: wrap; margin-top: -4px; margin-bottom: -4px; align-items: center;">
-              <div role="none" style="max-width: 100%; margin-right: 12px; padding-top: 4px; padding-bottom: 4px;">
-                <div data-v-7a7a37b1="" class="n-tag n-tag--round" style="--n-font-weight-strong: 500; --n-avatar-size-override: calc(28px - 8px); --n-bezier: cubic-bezier(.4, 0, .2, 1); --n-border-radius: 2px; --n-border: 1px solid rgba(24, 160, 88, 0.3); --n-close-icon-size: 14px; --n-close-color-pressed: rgba(24, 160, 88, 0.18); --n-close-color-hover: rgba(24, 160, 88, 0.12); --n-close-border-radius: 2px; --n-close-icon-color: #18a058; --n-close-icon-color-hover: #18a058; --n-close-icon-color-pressed: #18a058; --n-close-icon-color-disabled: #18a058; --n-close-margin-top: 0; --n-close-margin-right: 0; --n-close-margin-bottom: 0; --n-close-margin-left: 4px; --n-close-size: 18px; --n-color: rgba(24, 160, 88, 0.1); --n-color-checkable: #0000; --n-color-checked: #18a058; --n-color-checked-hover: #36ad6a; --n-color-checked-pressed: #0c7a43; --n-color-hover-checkable: rgba(46, 51, 56, .09); --n-color-pressed-checkable: rgba(46, 51, 56, .13); --n-font-size: 14px; --n-height: 28px; --n-opacity-disabled: 0.5; --n-padding: 0 7px; --n-text-color: #18a058; --n-text-color-checkable: rgb(51, 54, 57); --n-text-color-checked: #FFF; --n-text-color-hover-checkable: rgb(51, 54, 57); --n-text-color-pressed-checkable: rgb(51, 54, 57);">
-                  <!----><span class="n-tag__content"> 已连接: u</span>
-                  <!---->
-                  <div class="n-tag__border"></div>
-                </div>
-              </div>
-              <div role="none" style="max-width: 100%; margin-right: 12px; padding-top: 4px; padding-bottom: 4px;">
-                <div data-v-7a7a37b1="" class="n-radio-group n-radio-group--button-group" style="--n-font-size: 14px; --n-bezier: cubic-bezier(.4, 0, .2, 1); --n-button-border-color: rgb(224, 224, 230); --n-button-border-color-active: #18a058; --n-button-border-radius: 3px; --n-button-box-shadow: inset 0 0 0 1px #0000; --n-button-box-shadow-focus: inset 0 0 0 1px #18a058, 0 0 0 2px rgba(24, 160, 88, 0.3); --n-button-box-shadow-hover: inset 0 0 0 1px #0000; --n-button-color: #FFF; --n-button-color-active: #FFF; --n-button-text-color: rgb(51, 54, 57); --n-button-text-color-hover: #18a058; --n-button-text-color-active: #18a058; --n-height: 34px; --n-opacity-disabled: 0.5;"><label data-v-7a7a37b1="" class="n-radio-button"><input type="radio" class="n-radio-input" value="login">
-                    <div class="n-radio-button__state-border"></div>
-                    <div class="n-radio__label"> 网页登录 </div>
-                  </label>
-                  <div class="n-radio-group__splitor n-radio-group__splitor--checked"></div><label data-v-7a7a37b1="" class="n-radio-button n-radio-button--checked"><input type="radio" class="n-radio-input" checked="" value="token">
-                    <div class="n-radio-button__state-border"></div>
-                    <div class="n-radio__label"> 访问令牌 </div>
-                  </label>
-                </div>
-              </div>
-              <div role="none" style="max-width: 100%; padding-top: 4px; padding-bottom: 4px;"><button data-v-7a7a37b1="" class="n-button n-button--primary-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 400; --n-color: #0000; --n-color-hover: #0000; --n-color-pressed: #0000; --n-color-focus: #0000; --n-color-disabled: #0000; --n-ripple-color: #0000; --n-text-color: #18a058; --n-text-color-hover: #36ad6a; --n-text-color-pressed: #0c7a43; --n-text-color-focus: #36ad6a; --n-text-color-disabled: rgb(51, 54, 57); --n-border: none; --n-border-hover: none; --n-border-pressed: none; --n-border-focus: none; --n-border-disabled: none; --n-width: initial; --n-height: initial; --n-font-size: 14px; --n-padding: initial; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: initial;">
-                  <!---->
-                  <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true">
-                    <!---->
-                  </transition-stub><span class="n-button__content">配置</span>
-                  <!---->
-                  <!---->
-                  <!---->
-                </button></div>
-            </div>
-          </div>
-          <!---->
-        </div>
-        <div class="n-card__content" role="none">
-          <transition-stub data-v-7a7a37b1="" name="fade-in-height-expand-transition" appear="false" persisted="false" css="true">
+  <div data-v-ee14a773="" class="app-root workbench-page">
+    <header data-v-3978ac42="" data-v-ee14a773="" class="app-header-shell">
+      <div data-v-3978ac42="" class="header-bar">
+        <div data-v-3978ac42="" class="header-brand">
+          <div data-v-3978ac42="" class="brand-logo-wrap"><img data-v-3978ac42="" alt="CNB Tools" class="brand-logo" src="/icon.png"></div>
+          <div data-v-3978ac42="" class="brand-meta"><span data-v-3978ac42="" class="brand-name">CNB Merge</span>
             <!---->
-          </transition-stub>
-          <transition-stub data-v-7a7a37b1="" name="fade-in-height-expand-transition" appear="false" persisted="false" css="true">
-            <div class="n-collapse-transition" style="--n-bezier: cubic-bezier(.4, 0, .2, 1);">
-              <div data-v-7a7a37b1="" style="padding-top: 8px;">
-                <div data-v-7a7a37b1="" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;"><span data-v-7a7a37b1="" class="n-text" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-text-color: rgb(118, 124, 130); --n-font-weight-strong: 500; --n-font-famliy-mono: v-mono, SFMono-Regular, Menlo, Consolas, Courier, monospace; --n-code-border-radius: 2px; --n-code-text-color: rgb(51, 54, 57); --n-code-color: rgb(244, 244, 248); --n-code-border: 1px solid #0000; font-size: 12px;">https://api.cnb.cool</span><span data-v-7a7a37b1="" class="n-text" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-text-color: rgb(118, 124, 130); --n-font-weight-strong: 500; --n-font-famliy-mono: v-mono, SFMono-Regular, Menlo, Consolas, Courier, monospace; --n-code-border-radius: 2px; --n-code-text-color: rgb(51, 54, 57); --n-code-color: rgb(244, 244, 248); --n-code-border: 1px solid #0000; font-size: 12px;"> 项目：0 个 </span></div>
-              </div>
+            <div data-v-3978ac42="" class="n-badge n-badge--dot" style="--n-font-size: 12px; --n-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei UI', 'Segoe UI', system-ui, sans-serif; --n-color: #E11D48; --n-ripple-color: #E11D48; --n-bezier: cubic-bezier(.4, 0, .2, 1); --n-ripple-bezier: cubic-bezier(0, 0, .2, 1);"><button data-v-3978ac42="" class="version-pill wb-mono no-drag" type="button"> v1.0.0</button>
+              <transition-stub name="fade-in-scale-up-transition" appear="false" persisted="false" css="true">
+                <!---->
+              </transition-stub>
             </div>
-          </transition-stub>
+            <!---->
+          </div>
         </div>
-        <!---->
-        <!---->
+        <div data-v-3978ac42="" class="header-actions no-drag">
+          <!--v-if-->
+          <!----><button data-v-3978ac42="" aria-label="最近合并历史" class="header-icon-btn" title="最近合并历史" type="button"><svg data-v-5ede0785="" data-v-3978ac42="" aria-hidden="true" class="app-icon" fill="none" height="15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="15">
+              <path data-v-5ede0785="" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path data-v-5ede0785="" d="M3 3v5h5"></path>
+              <path data-v-5ede0785="" d="M12 7v5l4 2"></path>
+            </svg>
+            <!--v-if-->
+          </button>
+          <!----><button data-v-3978ac42="" aria-label="外观：跟随系统（点击切换为深色）" class="header-icon-btn" title="外观：跟随系统（点击切换为深色）" type="button">
+            <transition-stub data-v-3978ac42="" mode="out-in" name="wb-icon-swap" appear="false" persisted="false" css="true"><svg data-v-5ede0785="" data-v-3978ac42="" aria-hidden="true" class="app-icon" fill="none" height="15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="15">
+                <rect data-v-5ede0785="" height="14" rx="2" width="20" x="2" y="3"></rect>
+                <line data-v-5ede0785="" x1="8" x2="16" y1="21" y2="21"></line>
+                <line data-v-5ede0785="" x1="12" x2="12" y1="17" y2="21"></line>
+              </svg></transition-stub>
+          </button><button data-v-3978ac42="" aria-expanded="false" class="account-pill is-connected" type="button"><span data-v-3978ac42="" class="status-dot is-online"></span><span data-v-3978ac42="" class="account-pill-label">u</span>
+            <!--v-if--><span data-v-3978ac42="" class="account-pill-sep"></span><span data-v-3978ac42="" class="account-pill-toggle">配置</span><svg data-v-5ede0785="" data-v-3978ac42="" aria-hidden="true" class="app-icon account-chevron" fill="none" height="13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="13">
+              <path data-v-5ede0785="" d="m6 9 6 6 6-6"></path>
+            </svg>
+          </button>
+        </div>
       </div>
-    </div>
-    <!--v-if-->
-    <div data-v-7a7a37b1="" class="triple-row">
-      <div data-v-7a7a37b1="" style="display: flex; flex-direction: column; min-height: 0;">
-        <div data-v-7a7a37b1="" class="n-card n-card--bordered" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-border-radius: 3px; --n-color: #fff; --n-color-modal: #fff; --n-color-popover: #fff; --n-color-embedded: rgb(250, 250, 252); --n-color-embedded-modal: rgb(250, 250, 252); --n-color-embedded-popover: rgb(250, 250, 252); --n-color-target: #18a058; --n-text-color: rgb(51, 54, 57); --n-line-height: 1.6; --n-action-color: rgb(250, 250, 252); --n-title-text-color: rgb(31, 34, 37); --n-title-font-weight: 500; --n-close-icon-color: rgba(102, 102, 102, 1); --n-close-icon-color-hover: rgba(102, 102, 102, 1); --n-close-icon-color-pressed: rgba(102, 102, 102, 1); --n-close-color-hover: rgba(0, 0, 0, .09); --n-close-color-pressed: rgba(0, 0, 0, .13); --n-border-color: rgb(239, 239, 245); --n-box-shadow: 0 1px 2px -2px rgba(0, 0, 0, .08), 0 3px 6px 0 rgba(0, 0, 0, .06), 0 5px 12px 4px rgba(0, 0, 0, .04); --n-padding-top: 19px; --n-padding-bottom: 20px; --n-padding-left: 24px; --n-font-size: 14px; --n-title-font-size: 18px; --n-close-size: 22px; --n-close-icon-size: 18px; --n-close-border-radius: 3px; flex: 1 1 0%; display: flex; flex-direction: column; min-height: 0;">
-          <!---->
-          <div class="n-card-header" role="heading">
-            <div class="n-card-header__main" role="heading">1. 选择仓库</div>
-            <div class="n-card-header__extra"><button data-v-7a7a37b1="" class="n-button n-button--primary-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 400; --n-color: #0000; --n-color-hover: #0000; --n-color-pressed: #0000; --n-color-focus: #0000; --n-color-disabled: #0000; --n-ripple-color: #0000; --n-text-color: #18a058; --n-text-color-hover: #36ad6a; --n-text-color-pressed: #0c7a43; --n-text-color-focus: #36ad6a; --n-text-color-disabled: rgb(51, 54, 57); --n-border: none; --n-border-hover: none; --n-border-pressed: none; --n-border-focus: none; --n-border-disabled: none; --n-width: initial; --n-height: initial; --n-font-size: 14px; --n-padding: initial; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: initial;">
-                <!---->
-                <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true">
-                  <!---->
-                </transition-stub><span class="n-button__content">刷新</span>
-                <!---->
-                <!---->
-                <!---->
-              </button></div>
-            <!---->
+      <transition-stub data-v-3978ac42="" name="fade-in-height-expand-transition" appear="false" persisted="false" css="true">
+        <!---->
+      </transition-stub>
+    </header>
+    <div data-v-ee14a773="" class="workbench-body">
+      <main data-v-ee14a773="" class="workbench-grid triple-row">
+        <section data-v-6a11fe96="" data-v-ee14a773="" class="wb-col" data-col="repo">
+          <div data-v-6a11fe96="" class="wb-col-header">
+            <div data-v-6a11fe96="" class="wb-col-heading"><span data-v-6a11fe96="" class="wb-col-step wb-mono is-done">1.</span> <span data-v-6a11fe96="" class="wb-col-title">选择仓库</span><span data-v-6a11fe96="" class="wb-col-count wb-mono">0</span></div><button data-v-6a11fe96="" class="wb-col-action-btn" type="button"><svg data-v-5ede0785="" data-v-6a11fe96="" aria-hidden="true" class="app-icon" fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="12">
+                <path data-v-5ede0785="" d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path data-v-5ede0785="" d="M3 3v5h5"></path>
+                <path data-v-5ede0785="" d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                <path data-v-5ede0785="" d="M16 16h5v5"></path>
+              </svg><span data-v-6a11fe96="">刷新</span></button>
           </div>
-          <div class="n-card__content" style="display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; gap: 12px;" role="none">
-            <div data-v-7a7a37b1="" style="flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; gap: 12px;">
-              <div data-v-7a7a37b1="" class="n-input n-input--resizable n-input--stateful" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-count-text-color: rgb(118, 124, 130); --n-count-text-color-disabled: rgba(194, 194, 194, 1); --n-color: rgba(255, 255, 255, 1); --n-font-size: 14px; --n-font-weight: 400; --n-border-radius: 3px; --n-height: 34px; --n-padding-left: 12px; --n-padding-right: 12px; --n-text-color: rgb(51, 54, 57); --n-caret-color: #18a058; --n-text-decoration-color: rgb(51, 54, 57); --n-border: 1px solid rgb(224, 224, 230); --n-border-disabled: 1px solid rgb(224, 224, 230); --n-border-hover: 1px solid #36ad6a; --n-border-focus: 1px solid #36ad6a; --n-placeholder-color: rgba(194, 194, 194, 1); --n-placeholder-color-disabled: rgba(209, 209, 209, 1); --n-icon-size: 16px; --n-line-height-textarea: 1.6; --n-color-disabled: rgb(250, 250, 252); --n-color-focus: rgba(255, 255, 255, 1); --n-text-color-disabled: rgba(194, 194, 194, 1); --n-box-shadow-focus: 0 0 0 2px rgba(24, 160, 88, 0.2); --n-loading-color: #18a058; --n-caret-color-warning: #f0a020; --n-color-focus-warning: rgba(255, 255, 255, 1); --n-box-shadow-focus-warning: 0 0 0 2px rgba(240, 160, 32, 0.2); --n-border-warning: 1px solid #f0a020; --n-border-focus-warning: 1px solid #fcb040; --n-border-hover-warning: 1px solid #fcb040; --n-loading-color-warning: #f0a020; --n-caret-color-error: #d03050; --n-color-focus-error: rgba(255, 255, 255, 1); --n-box-shadow-focus-error: 0 0 0 2px rgba(208, 48, 80, 0.2); --n-border-error: 1px solid #d03050; --n-border-focus-error: 1px solid #de576d; --n-border-hover-error: 1px solid #de576d; --n-loading-color-error: #d03050; --n-clear-color: rgba(194, 194, 194, 1); --n-clear-size: 16px; --n-clear-color-hover: rgba(146, 146, 146, 1); --n-clear-color-pressed: rgba(175, 175, 175, 1); --n-icon-color: rgba(194, 194, 194, 1); --n-icon-color-hover: rgba(146, 146, 146, 1); --n-icon-color-pressed: rgba(175, 175, 175, 1); --n-icon-color-disabled: rgba(209, 209, 209, 1); --n-suffix-text-color: rgb(51, 54, 57);">
+          <div data-v-6a11fe96="" class="wb-col-search">
+            <div data-v-b6dfb5b4="" data-v-6a11fe96="" class="filter-input-wrap">
+              <div data-v-b6dfb5b4="" class="n-input n-input--resizable n-input--stateful" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-count-text-color: #64748B; --n-count-text-color-disabled: rgba(194, 194, 194, 1); --n-color: #F8FAFC; --n-font-size: 13px; --n-font-weight: 400; --n-border-radius: 7px; --n-height: 32px; --n-padding-left: 12px; --n-padding-right: 12px; --n-text-color: #334155; --n-caret-color: #0284C7; --n-text-decoration-color: #334155; --n-border: 1px solid #E2E8F0; --n-border-disabled: 1px solid #E2E8F0; --n-border-hover: 1px solid #CBD5E1; --n-border-focus: 1px solid #0284C7; --n-placeholder-color: #94A3B8; --n-placeholder-color-disabled: rgba(209, 209, 209, 1); --n-icon-size: 16px; --n-line-height-textarea: 1.6; --n-color-disabled: #F1F5F9; --n-color-focus: #FFFFFF; --n-text-color-disabled: rgba(194, 194, 194, 1); --n-box-shadow-focus: 0 0 0 2px rgba(2, 132, 199, 0.14); --n-loading-color: #0284C7; --n-caret-color-warning: #D97706; --n-color-focus-warning: #F8FAFC; --n-box-shadow-focus-warning: 0 0 0 2px rgba(217, 119, 6, 0.2); --n-border-warning: 1px solid #D97706; --n-border-focus-warning: 1px solid #B45309; --n-border-hover-warning: 1px solid #B45309; --n-loading-color-warning: #D97706; --n-caret-color-error: #E11D48; --n-color-focus-error: #F8FAFC; --n-box-shadow-focus-error: 0 0 0 2px rgba(225, 29, 72, 0.2); --n-border-error: 1px solid #E11D48; --n-border-focus-error: 1px solid #BE123C; --n-border-hover-error: 1px solid #BE123C; --n-loading-color-error: #E11D48; --n-clear-color: rgba(194, 194, 194, 1); --n-clear-size: 16px; --n-clear-color-hover: rgba(146, 146, 146, 1); --n-clear-color-pressed: rgba(175, 175, 175, 1); --n-icon-color: rgba(194, 194, 194, 1); --n-icon-color-hover: rgba(146, 146, 146, 1); --n-icon-color-pressed: rgba(175, 175, 175, 1); --n-icon-color-disabled: rgba(209, 209, 209, 1); --n-suffix-text-color: #334155;">
                 <div class="n-input-wrapper">
-                  <!---->
+                  <div class="n-input__prefix"><span data-v-b6dfb5b4="" class="filter-prefix"><svg data-v-5ede0785="" data-v-b6dfb5b4="" aria-hidden="true" class="app-icon" fill="none" height="13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="13"><circle data-v-5ede0785="" cx="11" cy="11" r="7"></circle><path data-v-5ede0785="" d="m20 20-3.5-3.5"></path></svg></span></div>
                   <div class="n-input__input"><input type="text" class="n-input__input-el" placeholder="过滤仓库..." size="20" value="">
                     <div class="n-input__placeholder"><span>过滤仓库...</span></div>
                     <!---->
@@ -117,8 +75,7 @@ exports[`组件快照 > App 初始渲染快照 1`] = `
                       </transition-stub>
                     </div>
                     <!---->
-                    <!---->
-                    <!---->
+                    <!----><kbd data-v-b6dfb5b4="" class="filter-kbd wb-mono">⌘F</kbd>
                     <!---->
                     <!---->
                   </div>
@@ -129,48 +86,39 @@ exports[`组件快照 > App 初始渲染快照 1`] = `
                 <div class="n-input__state-border"></div>
                 <!---->
               </div>
-              <!--v-if-->
-              <div data-v-7a7a37b1="" aria-label="项目列表" style="flex: 1 0 auto; height: 0px; border: 1px solid rgb(224, 224, 230); border-radius: 2px; padding: 4px; position: relative; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scroll-behavior: smooth; box-sizing: border-box;" tabindex="0">
-                <div data-v-7a7a37b1="" style="min-height: 100%; display: flex; flex-direction: column; gap: 4px;">
-                  <div data-v-7a7a37b1="" style="flex: 1 1 0%; min-height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 12px; box-sizing: border-box;">
-                    <div data-v-7a7a37b1="" class="n-empty" style="--n-icon-size: 40px; --n-font-size: 14px; --n-bezier: cubic-bezier(.4, 0, .2, 1); --n-text-color: rgba(194, 194, 194, 1); --n-icon-color: rgba(194, 194, 194, 1); --n-extra-text-color: rgb(51, 54, 57);">
-                      <div class="n-empty__icon"><i class="n-base-icon"><svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M26 7.5C26 11.0899 23.0899 14 19.5 14C15.9101 14 13 11.0899 13 7.5C13 3.91015 15.9101 1 19.5 1C23.0899 1 26 3.91015 26 7.5ZM16.8536 4.14645C16.6583 3.95118 16.3417 3.95118 16.1464 4.14645C15.9512 4.34171 15.9512 4.65829 16.1464 4.85355L18.7929 7.5L16.1464 10.1464C15.9512 10.3417 15.9512 10.6583 16.1464 10.8536C16.3417 11.0488 16.6583 11.0488 16.8536 10.8536L19.5 8.20711L22.1464 10.8536C22.3417 11.0488 22.6583 11.0488 22.8536 10.8536C23.0488 10.6583 23.0488 10.3417 22.8536 10.1464L20.2071 7.5L22.8536 4.85355C23.0488 4.65829 23.0488 4.34171 22.8536 4.14645C22.6583 3.95118 22.3417 3.95118 22.1464 4.14645L19.5 6.79289L16.8536 4.14645Z" fill="currentColor"></path>
-                            <path d="M25 22.75V12.5991C24.5572 13.0765 24.053 13.4961 23.5 13.8454V16H17.5L17.3982 16.0068C17.0322 16.0565 16.75 16.3703 16.75 16.75C16.75 18.2688 15.5188 19.5 14 19.5C12.4812 19.5 11.25 18.2688 11.25 16.75L11.2432 16.6482C11.1935 16.2822 10.8797 16 10.5 16H4.5V7.25C4.5 6.2835 5.2835 5.5 6.25 5.5H12.2696C12.4146 4.97463 12.6153 4.47237 12.865 4H6.25C4.45507 4 3 5.45507 3 7.25V22.75C3 24.5449 4.45507 26 6.25 26H21.75C23.5449 26 25 24.5449 25 22.75ZM4.5 22.75V17.5H9.81597L9.85751 17.7041C10.2905 19.5919 11.9808 21 14 21L14.215 20.9947C16.2095 20.8953 17.842 19.4209 18.184 17.5H23.5V22.75C23.5 23.7165 22.7165 24.5 21.75 24.5H6.25C5.2835 24.5 4.5 23.7165 4.5 22.75Z" fill="currentColor"></path>
-                          </svg></i></div>
-                      <div class="n-empty__description">暂无数据</div>
-                      <!---->
-                    </div>
-                  </div>
+            </div>
+            <!--v-if-->
+          </div>
+          <div data-v-6a11fe96="" aria-label="项目列表" class="wb-list-scroll" style="overflow-y: auto;" tabindex="0">
+            <div data-v-6a11fe96="" class="wb-list-inner">
+              <div data-v-6a11fe96="" class="wb-list-empty">
+                <div data-v-caede66a="" data-v-6a11fe96="" class="empty-state-box">
+                  <div data-v-caede66a="" class="empty-icon-ring"><svg data-v-5ede0785="" data-v-caede66a="" aria-hidden="true" class="app-icon" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="18">
+                      <path data-v-5ede0785="" d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
+                      <circle data-v-5ede0785="" cx="12" cy="13" r="2"></circle>
+                      <path data-v-5ede0785="" d="M14 13h3"></path>
+                      <path data-v-5ede0785="" d="M7 13h3"></path>
+                    </svg></div><span data-v-caede66a="" class="empty-title">暂无数据</span><span data-v-caede66a="" class="empty-hint">完成 CNB 登录后将自动拉取仓库</span>
                 </div>
-              </div><span data-v-7a7a37b1="" class="n-text" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-text-color: rgb(118, 124, 130); --n-font-weight-strong: 500; --n-font-famliy-mono: v-mono, SFMono-Regular, Menlo, Consolas, Courier, monospace; --n-code-border-radius: 2px; --n-code-text-color: rgb(51, 54, 57); --n-code-color: rgb(244, 244, 248); --n-code-border: 1px solid #0000; font-size: 12px;"> 已选: org/demo</span>
+              </div>
             </div>
           </div>
-          <!---->
-          <!---->
-        </div>
-      </div>
-      <div data-v-7a7a37b1="" style="display: flex; flex-direction: column; min-height: 0;">
-        <div data-v-7a7a37b1="" class="n-card n-card--bordered" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-border-radius: 3px; --n-color: #fff; --n-color-modal: #fff; --n-color-popover: #fff; --n-color-embedded: rgb(250, 250, 252); --n-color-embedded-modal: rgb(250, 250, 252); --n-color-embedded-popover: rgb(250, 250, 252); --n-color-target: #18a058; --n-text-color: rgb(51, 54, 57); --n-line-height: 1.6; --n-action-color: rgb(250, 250, 252); --n-title-text-color: rgb(31, 34, 37); --n-title-font-weight: 500; --n-close-icon-color: rgba(102, 102, 102, 1); --n-close-icon-color-hover: rgba(102, 102, 102, 1); --n-close-icon-color-pressed: rgba(102, 102, 102, 1); --n-close-color-hover: rgba(0, 0, 0, .09); --n-close-color-pressed: rgba(0, 0, 0, .13); --n-border-color: rgb(239, 239, 245); --n-box-shadow: 0 1px 2px -2px rgba(0, 0, 0, .08), 0 3px 6px 0 rgba(0, 0, 0, .06), 0 5px 12px 4px rgba(0, 0, 0, .04); --n-padding-top: 19px; --n-padding-bottom: 20px; --n-padding-left: 24px; --n-font-size: 14px; --n-title-font-size: 18px; --n-close-size: 22px; --n-close-icon-size: 18px; --n-close-border-radius: 3px; flex: 1 1 0%; display: flex; flex-direction: column; min-height: 0;">
-          <!---->
-          <div class="n-card-header" role="heading">
-            <div class="n-card-header__main" role="heading">2. 选择源分支</div>
-            <div class="n-card-header__extra"><button data-v-7a7a37b1="" class="n-button n-button--primary-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 400; --n-color: #0000; --n-color-hover: #0000; --n-color-pressed: #0000; --n-color-focus: #0000; --n-color-disabled: #0000; --n-ripple-color: #0000; --n-text-color: #18a058; --n-text-color-hover: #36ad6a; --n-text-color-pressed: #0c7a43; --n-text-color-focus: #36ad6a; --n-text-color-disabled: rgb(51, 54, 57); --n-border: none; --n-border-hover: none; --n-border-pressed: none; --n-border-focus: none; --n-border-disabled: none; --n-width: initial; --n-height: initial; --n-font-size: 14px; --n-padding: initial; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: initial;">
-                <!---->
-                <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true">
-                  <!---->
-                </transition-stub><span class="n-button__content">刷新</span>
-                <!---->
-                <!---->
-                <!---->
-              </button></div>
-            <!---->
+          <div data-v-6a11fe96="" class="wb-col-footer"><span data-v-6a11fe96="" class="wb-col-footer-text wb-ellipsis"> 已选: <span data-v-6a11fe96="" class="wb-mono">org/demo</span></span></div>
+        </section>
+        <section data-v-bce09f20="" data-v-ee14a773="" class="wb-col" data-col="source">
+          <div data-v-bce09f20="" class="wb-col-header">
+            <div data-v-bce09f20="" class="wb-col-heading"><span data-v-bce09f20="" class="wb-col-step wb-mono is-done">2.</span> <span data-v-bce09f20="" class="wb-col-title">选择源分支</span><span data-v-bce09f20="" class="wb-col-count wb-mono">1</span></div><button data-v-bce09f20="" class="wb-col-action-btn" type="button"><svg data-v-5ede0785="" data-v-bce09f20="" aria-hidden="true" class="app-icon" fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="12">
+                <path data-v-5ede0785="" d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path data-v-5ede0785="" d="M3 3v5h5"></path>
+                <path data-v-5ede0785="" d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                <path data-v-5ede0785="" d="M16 16h5v5"></path>
+              </svg><span data-v-bce09f20="">刷新</span></button>
           </div>
-          <div class="n-card__content" style="display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; gap: 12px;" role="none">
-            <div data-v-7a7a37b1="" style="flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; gap: 12px;">
-              <div data-v-7a7a37b1="" class="n-input n-input--resizable n-input--stateful" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-count-text-color: rgb(118, 124, 130); --n-count-text-color-disabled: rgba(194, 194, 194, 1); --n-color: rgba(255, 255, 255, 1); --n-font-size: 14px; --n-font-weight: 400; --n-border-radius: 3px; --n-height: 34px; --n-padding-left: 12px; --n-padding-right: 12px; --n-text-color: rgb(51, 54, 57); --n-caret-color: #18a058; --n-text-decoration-color: rgb(51, 54, 57); --n-border: 1px solid rgb(224, 224, 230); --n-border-disabled: 1px solid rgb(224, 224, 230); --n-border-hover: 1px solid #36ad6a; --n-border-focus: 1px solid #36ad6a; --n-placeholder-color: rgba(194, 194, 194, 1); --n-placeholder-color-disabled: rgba(209, 209, 209, 1); --n-icon-size: 16px; --n-line-height-textarea: 1.6; --n-color-disabled: rgb(250, 250, 252); --n-color-focus: rgba(255, 255, 255, 1); --n-text-color-disabled: rgba(194, 194, 194, 1); --n-box-shadow-focus: 0 0 0 2px rgba(24, 160, 88, 0.2); --n-loading-color: #18a058; --n-caret-color-warning: #f0a020; --n-color-focus-warning: rgba(255, 255, 255, 1); --n-box-shadow-focus-warning: 0 0 0 2px rgba(240, 160, 32, 0.2); --n-border-warning: 1px solid #f0a020; --n-border-focus-warning: 1px solid #fcb040; --n-border-hover-warning: 1px solid #fcb040; --n-loading-color-warning: #f0a020; --n-caret-color-error: #d03050; --n-color-focus-error: rgba(255, 255, 255, 1); --n-box-shadow-focus-error: 0 0 0 2px rgba(208, 48, 80, 0.2); --n-border-error: 1px solid #d03050; --n-border-focus-error: 1px solid #de576d; --n-border-hover-error: 1px solid #de576d; --n-loading-color-error: #d03050; --n-clear-color: rgba(194, 194, 194, 1); --n-clear-size: 16px; --n-clear-color-hover: rgba(146, 146, 146, 1); --n-clear-color-pressed: rgba(175, 175, 175, 1); --n-icon-color: rgba(194, 194, 194, 1); --n-icon-color-hover: rgba(146, 146, 146, 1); --n-icon-color-pressed: rgba(175, 175, 175, 1); --n-icon-color-disabled: rgba(209, 209, 209, 1); --n-suffix-text-color: rgb(51, 54, 57);">
+          <div data-v-bce09f20="" class="wb-col-search">
+            <div data-v-b6dfb5b4="" data-v-bce09f20="" class="filter-input-wrap">
+              <div data-v-b6dfb5b4="" class="n-input n-input--resizable n-input--stateful" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-count-text-color: #64748B; --n-count-text-color-disabled: rgba(194, 194, 194, 1); --n-color: #F8FAFC; --n-font-size: 13px; --n-font-weight: 400; --n-border-radius: 7px; --n-height: 32px; --n-padding-left: 12px; --n-padding-right: 12px; --n-text-color: #334155; --n-caret-color: #0284C7; --n-text-decoration-color: #334155; --n-border: 1px solid #E2E8F0; --n-border-disabled: 1px solid #E2E8F0; --n-border-hover: 1px solid #CBD5E1; --n-border-focus: 1px solid #0284C7; --n-placeholder-color: #94A3B8; --n-placeholder-color-disabled: rgba(209, 209, 209, 1); --n-icon-size: 16px; --n-line-height-textarea: 1.6; --n-color-disabled: #F1F5F9; --n-color-focus: #FFFFFF; --n-text-color-disabled: rgba(194, 194, 194, 1); --n-box-shadow-focus: 0 0 0 2px rgba(2, 132, 199, 0.14); --n-loading-color: #0284C7; --n-caret-color-warning: #D97706; --n-color-focus-warning: #F8FAFC; --n-box-shadow-focus-warning: 0 0 0 2px rgba(217, 119, 6, 0.2); --n-border-warning: 1px solid #D97706; --n-border-focus-warning: 1px solid #B45309; --n-border-hover-warning: 1px solid #B45309; --n-loading-color-warning: #D97706; --n-caret-color-error: #E11D48; --n-color-focus-error: #F8FAFC; --n-box-shadow-focus-error: 0 0 0 2px rgba(225, 29, 72, 0.2); --n-border-error: 1px solid #E11D48; --n-border-focus-error: 1px solid #BE123C; --n-border-hover-error: 1px solid #BE123C; --n-loading-color-error: #E11D48; --n-clear-color: rgba(194, 194, 194, 1); --n-clear-size: 16px; --n-clear-color-hover: rgba(146, 146, 146, 1); --n-clear-color-pressed: rgba(175, 175, 175, 1); --n-icon-color: rgba(194, 194, 194, 1); --n-icon-color-hover: rgba(146, 146, 146, 1); --n-icon-color-pressed: rgba(175, 175, 175, 1); --n-icon-color-disabled: rgba(209, 209, 209, 1); --n-suffix-text-color: #334155;">
                 <div class="n-input-wrapper">
-                  <!---->
+                  <div class="n-input__prefix"><span data-v-b6dfb5b4="" class="filter-prefix"><svg data-v-5ede0785="" data-v-b6dfb5b4="" aria-hidden="true" class="app-icon" fill="none" height="13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="13"><circle data-v-5ede0785="" cx="11" cy="11" r="7"></circle><path data-v-5ede0785="" d="m20 20-3.5-3.5"></path></svg></span></div>
                   <div class="n-input__input"><input type="text" class="n-input__input-el" placeholder="过滤源分支..." size="20" value="">
                     <div class="n-input__placeholder"><span>过滤源分支...</span></div>
                     <!---->
@@ -196,123 +144,103 @@ exports[`组件快照 > App 初始渲染快照 1`] = `
                 <div class="n-input__state-border"></div>
                 <!---->
               </div>
-              <div data-v-7a7a37b1="" aria-label="源分支列表" style="flex: 1 0 auto; height: 0px; border: 1px solid rgb(224, 224, 230); border-radius: 2px; padding: 4px; position: relative; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scroll-behavior: smooth; box-sizing: border-box;" tabindex="0">
-                <div data-v-7a7a37b1="" style="min-height: 100%; display: flex; flex-direction: column; gap: 4px;">
-                  <div data-v-7a7a37b1="" style="display: flex; flex-direction: column; gap: 4px;"><button data-v-7a7a37b1="" class="n-button n-button--primary-type n-button--medium-type n-button--block gl-list-item" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 400; --n-color: #0000; --n-color-hover: #0000; --n-color-pressed: #0000; --n-color-focus: #0000; --n-color-disabled: #0000; --n-ripple-color: #0000; --n-text-color: #18a058; --n-text-color-hover: #36ad6a; --n-text-color-pressed: #0c7a43; --n-text-color-focus: #36ad6a; --n-text-color-disabled: rgb(51, 54, 57); --n-border: none; --n-border-hover: none; --n-border-pressed: none; --n-border-focus: none; --n-border-disabled: none; --n-width: initial; --n-height: initial; --n-font-size: 14px; --n-padding: initial; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: initial; justify-content: flex-start; padding: 6px 10px 6px 14px;" data-item-key="feat" data-selected="true" title="feat">
-                      <!---->
-                      <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true">
+            </div>
+          </div>
+          <div data-v-bce09f20="" aria-label="源分支列表" class="wb-list-scroll" style="overflow-y: auto;" tabindex="0">
+            <div data-v-bce09f20="" class="wb-list-inner">
+              <div data-v-bce09f20="" class="wb-list-stack"><button data-v-bce09f20="" class="wb-row branch-row" data-item-key="feat" data-selected="true" title="feat" type="button"><svg data-v-5ede0785="" data-v-bce09f20="" aria-hidden="true" class="app-icon branch-icon is-selected" fill="none" height="13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="13">
+                    <line data-v-5ede0785="" x1="6" x2="6" y1="3" y2="15"></line>
+                    <circle data-v-5ede0785="" cx="18" cy="6" r="3"></circle>
+                    <circle data-v-5ede0785="" cx="6" cy="18" r="3"></circle>
+                    <path data-v-5ede0785="" d="M18 9a9 9 0 0 1-9 9"></path>
+                  </svg><span data-v-bce09f20="" class="branch-name wb-mono wb-ellipsis">feat</span></button></div>
+            </div>
+          </div>
+          <div data-v-bce09f20="" class="wb-col-footer"><span data-v-bce09f20="" class="wb-col-footer-text wb-tabular"> 共 1 个分支 </span><span data-v-bce09f20="" class="wb-col-footer-hint wb-mono">↑↓ · Enter</span></div>
+        </section>
+        <section data-v-e0597b77="" data-v-ee14a773="" class="wb-col" data-col="target">
+          <div data-v-e0597b77="" class="wb-col-header">
+            <div data-v-e0597b77="" class="wb-col-heading"><span data-v-e0597b77="" class="wb-col-step wb-mono is-done">3.</span> <span data-v-e0597b77="" class="wb-col-title">选择目标分支</span><span data-v-e0597b77="" class="wb-col-count is-active wb-mono">1</span></div>
+            <div data-v-e0597b77="" class="col-header-actions">
+              <!--v-if--><button data-v-e0597b77="" class="wb-col-action-btn" type="button"> 全选当前 </button><button data-v-e0597b77="" class="wb-col-action-btn is-muted" type="button"> 清空 </button>
+            </div>
+          </div>
+          <div data-v-e0597b77="" class="wb-col-search">
+            <div data-v-e0597b77="" class="target-search-row">
+              <div data-v-e0597b77="" class="target-search-input">
+                <div data-v-b6dfb5b4="" data-v-e0597b77="" class="filter-input-wrap">
+                  <div data-v-b6dfb5b4="" class="n-input n-input--resizable n-input--stateful" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-count-text-color: #64748B; --n-count-text-color-disabled: rgba(194, 194, 194, 1); --n-color: #F8FAFC; --n-font-size: 13px; --n-font-weight: 400; --n-border-radius: 7px; --n-height: 32px; --n-padding-left: 12px; --n-padding-right: 12px; --n-text-color: #334155; --n-caret-color: #0284C7; --n-text-decoration-color: #334155; --n-border: 1px solid #E2E8F0; --n-border-disabled: 1px solid #E2E8F0; --n-border-hover: 1px solid #CBD5E1; --n-border-focus: 1px solid #0284C7; --n-placeholder-color: #94A3B8; --n-placeholder-color-disabled: rgba(209, 209, 209, 1); --n-icon-size: 16px; --n-line-height-textarea: 1.6; --n-color-disabled: #F1F5F9; --n-color-focus: #FFFFFF; --n-text-color-disabled: rgba(194, 194, 194, 1); --n-box-shadow-focus: 0 0 0 2px rgba(2, 132, 199, 0.14); --n-loading-color: #0284C7; --n-caret-color-warning: #D97706; --n-color-focus-warning: #F8FAFC; --n-box-shadow-focus-warning: 0 0 0 2px rgba(217, 119, 6, 0.2); --n-border-warning: 1px solid #D97706; --n-border-focus-warning: 1px solid #B45309; --n-border-hover-warning: 1px solid #B45309; --n-loading-color-warning: #D97706; --n-caret-color-error: #E11D48; --n-color-focus-error: #F8FAFC; --n-box-shadow-focus-error: 0 0 0 2px rgba(225, 29, 72, 0.2); --n-border-error: 1px solid #E11D48; --n-border-focus-error: 1px solid #BE123C; --n-border-hover-error: 1px solid #BE123C; --n-loading-color-error: #E11D48; --n-clear-color: rgba(194, 194, 194, 1); --n-clear-size: 16px; --n-clear-color-hover: rgba(146, 146, 146, 1); --n-clear-color-pressed: rgba(175, 175, 175, 1); --n-icon-color: rgba(194, 194, 194, 1); --n-icon-color-hover: rgba(146, 146, 146, 1); --n-icon-color-pressed: rgba(175, 175, 175, 1); --n-icon-color-disabled: rgba(209, 209, 209, 1); --n-suffix-text-color: #334155;">
+                    <div class="n-input-wrapper">
+                      <div class="n-input__prefix"><span data-v-b6dfb5b4="" class="filter-prefix"><svg data-v-5ede0785="" data-v-b6dfb5b4="" aria-hidden="true" class="app-icon" fill="none" height="13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="13"><circle data-v-5ede0785="" cx="11" cy="11" r="7"></circle><path data-v-5ede0785="" d="m20 20-3.5-3.5"></path></svg></span></div>
+                      <div class="n-input__input"><input type="text" class="n-input__input-el" placeholder="过滤目标分支..." size="20" value="">
+                        <div class="n-input__placeholder"><span>过滤目标分支...</span></div>
                         <!---->
-                      </transition-stub><span class="n-button__content"><span data-v-7a7a37b1="" class="gl-ellipsis-1">feat</span></span>
-                      <!---->
-                      <!---->
-                      <!---->
-                    </button></div>
-                </div>
-              </div><span data-v-7a7a37b1="" class="n-text" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-text-color: rgb(118, 124, 130); --n-font-weight-strong: 500; --n-font-famliy-mono: v-mono, SFMono-Regular, Menlo, Consolas, Courier, monospace; --n-code-border-radius: 2px; --n-code-text-color: rgb(51, 54, 57); --n-code-color: rgb(244, 244, 248); --n-code-border: 1px solid #0000; font-size: 12px;"> 共 1 个分支 </span>
-            </div>
-          </div>
-          <!---->
-          <!---->
-        </div>
-      </div>
-      <div data-v-7a7a37b1="" style="display: flex; flex-direction: column; min-height: 0;">
-        <div data-v-7a7a37b1="" class="n-card n-card--bordered" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-border-radius: 3px; --n-color: #fff; --n-color-modal: #fff; --n-color-popover: #fff; --n-color-embedded: rgb(250, 250, 252); --n-color-embedded-modal: rgb(250, 250, 252); --n-color-embedded-popover: rgb(250, 250, 252); --n-color-target: #18a058; --n-text-color: rgb(51, 54, 57); --n-line-height: 1.6; --n-action-color: rgb(250, 250, 252); --n-title-text-color: rgb(31, 34, 37); --n-title-font-weight: 500; --n-close-icon-color: rgba(102, 102, 102, 1); --n-close-icon-color-hover: rgba(102, 102, 102, 1); --n-close-icon-color-pressed: rgba(102, 102, 102, 1); --n-close-color-hover: rgba(0, 0, 0, .09); --n-close-color-pressed: rgba(0, 0, 0, .13); --n-border-color: rgb(239, 239, 245); --n-box-shadow: 0 1px 2px -2px rgba(0, 0, 0, .08), 0 3px 6px 0 rgba(0, 0, 0, .06), 0 5px 12px 4px rgba(0, 0, 0, .04); --n-padding-top: 19px; --n-padding-bottom: 20px; --n-padding-left: 24px; --n-font-size: 14px; --n-title-font-size: 18px; --n-close-size: 22px; --n-close-icon-size: 18px; --n-close-border-radius: 3px; flex: 1 1 0%; display: flex; flex-direction: column; min-height: 0;">
-          <!---->
-          <div class="n-card-header" role="heading">
-            <div class="n-card-header__main" role="heading">3. 选择目标分支</div>
-            <div class="n-card-header__extra">
-              <div data-v-7a7a37b1="" role="none" class="n-space" style="display: flex; flex-direction: row; justify-content: flex-start; flex-wrap: wrap; margin-top: -4px; margin-bottom: -4px; align-items: center;">
-                <div role="none" style="max-width: 100%; margin-right: 12px; padding-top: 4px; padding-bottom: 4px;"><button data-v-7a7a37b1="" class="n-button n-button--primary-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 400; --n-color: #0000; --n-color-hover: #0000; --n-color-pressed: #0000; --n-color-focus: #0000; --n-color-disabled: #0000; --n-ripple-color: #0000; --n-text-color: #18a058; --n-text-color-hover: #36ad6a; --n-text-color-pressed: #0c7a43; --n-text-color-focus: #36ad6a; --n-text-color-disabled: rgb(51, 54, 57); --n-border: none; --n-border-hover: none; --n-border-pressed: none; --n-border-focus: none; --n-border-disabled: none; --n-width: initial; --n-height: initial; --n-font-size: 14px; --n-padding: initial; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: initial;">
-                    <!---->
-                    <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true">
-                      <!---->
-                    </transition-stub><span class="n-button__content"> 全选当前 </span>
-                    <!---->
-                    <!---->
-                    <!---->
-                  </button></div>
-                <div role="none" style="max-width: 100%; padding-top: 4px; padding-bottom: 4px;"><button data-v-7a7a37b1="" class="n-button n-button--default-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 400; --n-color: #0000; --n-color-hover: #0000; --n-color-pressed: #0000; --n-color-focus: #0000; --n-color-disabled: #0000; --n-ripple-color: #0000; --n-text-color: rgb(51, 54, 57); --n-text-color-hover: #36ad6a; --n-text-color-pressed: #0c7a43; --n-text-color-focus: #36ad6a; --n-text-color-disabled: rgb(51, 54, 57); --n-border: none; --n-border-hover: none; --n-border-pressed: none; --n-border-focus: none; --n-border-disabled: none; --n-width: initial; --n-height: initial; --n-font-size: 14px; --n-padding: initial; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: initial;">
-                    <!---->
-                    <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true">
-                      <!---->
-                    </transition-stub><span class="n-button__content"> 清空 </span>
-                    <!---->
-                    <!---->
-                    <!---->
-                  </button></div>
-              </div>
-            </div>
-            <!---->
-          </div>
-          <div class="n-card__content" style="display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; gap: 12px;" role="none">
-            <div data-v-7a7a37b1="" style="flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; gap: 12px;">
-              <div data-v-7a7a37b1="" class="n-input n-input--resizable n-input--stateful" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-count-text-color: rgb(118, 124, 130); --n-count-text-color-disabled: rgba(194, 194, 194, 1); --n-color: rgba(255, 255, 255, 1); --n-font-size: 14px; --n-font-weight: 400; --n-border-radius: 3px; --n-height: 34px; --n-padding-left: 12px; --n-padding-right: 12px; --n-text-color: rgb(51, 54, 57); --n-caret-color: #18a058; --n-text-decoration-color: rgb(51, 54, 57); --n-border: 1px solid rgb(224, 224, 230); --n-border-disabled: 1px solid rgb(224, 224, 230); --n-border-hover: 1px solid #36ad6a; --n-border-focus: 1px solid #36ad6a; --n-placeholder-color: rgba(194, 194, 194, 1); --n-placeholder-color-disabled: rgba(209, 209, 209, 1); --n-icon-size: 16px; --n-line-height-textarea: 1.6; --n-color-disabled: rgb(250, 250, 252); --n-color-focus: rgba(255, 255, 255, 1); --n-text-color-disabled: rgba(194, 194, 194, 1); --n-box-shadow-focus: 0 0 0 2px rgba(24, 160, 88, 0.2); --n-loading-color: #18a058; --n-caret-color-warning: #f0a020; --n-color-focus-warning: rgba(255, 255, 255, 1); --n-box-shadow-focus-warning: 0 0 0 2px rgba(240, 160, 32, 0.2); --n-border-warning: 1px solid #f0a020; --n-border-focus-warning: 1px solid #fcb040; --n-border-hover-warning: 1px solid #fcb040; --n-loading-color-warning: #f0a020; --n-caret-color-error: #d03050; --n-color-focus-error: rgba(255, 255, 255, 1); --n-box-shadow-focus-error: 0 0 0 2px rgba(208, 48, 80, 0.2); --n-border-error: 1px solid #d03050; --n-border-focus-error: 1px solid #de576d; --n-border-hover-error: 1px solid #de576d; --n-loading-color-error: #d03050; --n-clear-color: rgba(194, 194, 194, 1); --n-clear-size: 16px; --n-clear-color-hover: rgba(146, 146, 146, 1); --n-clear-color-pressed: rgba(175, 175, 175, 1); --n-icon-color: rgba(194, 194, 194, 1); --n-icon-color-hover: rgba(146, 146, 146, 1); --n-icon-color-pressed: rgba(175, 175, 175, 1); --n-icon-color-disabled: rgba(209, 209, 209, 1); --n-suffix-text-color: rgb(51, 54, 57);">
-                <div class="n-input-wrapper">
-                  <!---->
-                  <div class="n-input__input"><input type="text" class="n-input__input-el" placeholder="过滤目标分支..." size="20" value="">
-                    <div class="n-input__placeholder"><span>过滤目标分支...</span></div>
-                    <!---->
-                  </div>
-                  <div class="n-input__suffix">
-                    <div class="n-base-clear">
-                      <transition-stub name="icon-switch-transition" appear="true" persisted="false" css="true">
-                        <div class="n-base-clear__placeholder">
-                          <!---->
+                      </div>
+                      <div class="n-input__suffix">
+                        <div class="n-base-clear">
+                          <transition-stub name="icon-switch-transition" appear="true" persisted="false" css="true">
+                            <div class="n-base-clear__placeholder">
+                              <!---->
+                            </div>
+                          </transition-stub>
                         </div>
-                      </transition-stub>
+                        <!---->
+                        <!---->
+                        <!---->
+                        <!---->
+                        <!---->
+                      </div>
                     </div>
                     <!---->
                     <!---->
-                    <!---->
-                    <!---->
+                    <div class="n-input__border"></div>
+                    <div class="n-input__state-border"></div>
                     <!---->
                   </div>
                 </div>
-                <!---->
-                <!---->
-                <div class="n-input__border"></div>
-                <div class="n-input__state-border"></div>
-                <!---->
               </div>
-              <div data-v-7a7a37b1="" aria-label="目标分支列表" style="flex: 1 0 auto; height: 0px; border: 1px solid rgb(224, 224, 230); border-radius: 2px; padding: 4px; position: relative; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scroll-behavior: smooth; box-sizing: border-box;" tabindex="0">
-                <div data-v-7a7a37b1="" style="min-height: 100%; display: flex; flex-direction: column; gap: 4px;">
-                  <div data-v-7a7a37b1="" style="display: flex; flex-direction: column; gap: 4px;"><button data-v-7a7a37b1="" class="n-button n-button--primary-type n-button--medium-type n-button--block gl-list-item" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 400; --n-color: #0000; --n-color-hover: #0000; --n-color-pressed: #0000; --n-color-focus: #0000; --n-color-disabled: #0000; --n-ripple-color: #0000; --n-text-color: #18a058; --n-text-color-hover: #36ad6a; --n-text-color-pressed: #0c7a43; --n-text-color-focus: #36ad6a; --n-text-color-disabled: rgb(51, 54, 57); --n-border: none; --n-border-hover: none; --n-border-pressed: none; --n-border-focus: none; --n-border-disabled: none; --n-width: initial; --n-height: initial; --n-font-size: 14px; --n-padding: initial; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: initial; justify-content: flex-start; padding: 6px 10px 6px 14px;" aria-pressed="true" data-item-key="main" data-selected="true" title="main">
-                      <!---->
-                      <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true">
-                        <!---->
-                      </transition-stub><span class="n-button__content"><span data-v-7a7a37b1="" style="display: inline-block; width: 14px; color: rgb(24, 160, 88); text-align: center; font-weight: 600; margin-right: 6px;">✓</span><span data-v-7a7a37b1="" class="gl-ellipsis-1">main</span></span>
-                      <!---->
-                      <!---->
-                      <!---->
-                    </button></div>
-                </div>
-              </div><span data-v-7a7a37b1="" class="n-text" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-text-color: rgb(118, 124, 130); --n-font-weight-strong: 500; --n-font-famliy-mono: v-mono, SFMono-Regular, Menlo, Consolas, Courier, monospace; --n-code-border-radius: 2px; --n-code-text-color: rgb(51, 54, 57); --n-code-color: rgb(244, 244, 248); --n-code-border: 1px solid #0000; font-size: 12px;"> 已选: 1 个 </span>
+              <div data-v-e0597b77="" class="target-view-tabs"><span data-v-e0597b77="" aria-hidden="true" class="view-tab-thumb"></span><button data-v-e0597b77="" class="view-tab active" type="button"> 全部 </button><button data-v-e0597b77="" class="view-tab" type="button"> 已选 <span data-v-e0597b77="" class="wb-mono">1</span></button></div>
             </div>
           </div>
-          <!---->
-          <!---->
+          <div data-v-e0597b77="" aria-label="目标分支列表" class="wb-list-scroll" style="overflow-y: auto;" tabindex="0">
+            <div data-v-e0597b77="" class="wb-list-inner">
+              <div data-v-e0597b77="" class="wb-list-stack"><button data-v-e0597b77="" aria-pressed="true" class="wb-row target-row" data-item-key="main" data-selected="true" title="main" type="button"><span data-v-e0597b77="" class="target-checkbox is-checked"><svg data-v-5ede0785="" data-v-e0597b77="" aria-hidden="true" class="app-icon" fill="none" height="11" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" viewBox="0 0 24 24" width="11"><polyline data-v-5ede0785="" class="check-stroke" pathLength="1" points="20 6 9 17 4 12"></polyline></svg></span><span data-v-e0597b77="" class="tone-dot dot-main"></span><span data-v-e0597b77="" class="target-name wb-mono wb-ellipsis">main</span>
+                  <!--v-if-->
+                </button></div>
+            </div>
+          </div>
+          <div data-v-e0597b77="" class="wb-col-footer"><span data-v-e0597b77="" class="wb-col-footer-text wb-tabular"> 已选: 1 个 </span><span data-v-e0597b77="" class="wb-col-footer-hint wb-mono">⇧ 连选 · Space</span></div>
+        </section>
+      </main>
+      <footer data-v-797185e8="" data-v-ee14a773="" class="merge-dock action-bar is-ready">
+        <div data-v-797185e8="" class="dock-flow">
+          <div data-v-797185e8="" class="dock-repo" title="org/demo"><svg data-v-5ede0785="" data-v-797185e8="" aria-hidden="true" class="app-icon" fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="14">
+              <path data-v-5ede0785="" d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
+              <circle data-v-5ede0785="" cx="12" cy="13" r="2"></circle>
+              <path data-v-5ede0785="" d="M14 13h3"></path>
+              <path data-v-5ede0785="" d="M7 13h3"></path>
+            </svg><span data-v-797185e8="" class="dock-repo-name wb-mono wb-ellipsis">org/demo</span></div><span data-v-797185e8="" class="dock-divider"></span>
+          <div data-v-797185e8="" class="dock-pipeline"><span data-v-797185e8="" class="branch-chip chip-source wb-mono" title="feat"><svg data-v-5ede0785="" data-v-797185e8="" aria-hidden="true" class="app-icon" fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="12"><line data-v-5ede0785="" x1="6" x2="6" y1="3" y2="15"></line><circle data-v-5ede0785="" cx="18" cy="6" r="3"></circle><circle data-v-5ede0785="" cx="6" cy="18" r="3"></circle><path data-v-5ede0785="" d="M18 9a9 9 0 0 1-9 9"></path></svg><span data-v-797185e8="" class="wb-ellipsis">feat</span></span><span data-v-797185e8="" class="flow-arrow is-active"><svg data-v-5ede0785="" data-v-797185e8="" aria-hidden="true" class="app-icon" fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="14"><path data-v-5ede0785="" d="M5 12h14"></path><path data-v-5ede0785="" d="m12 5 7 7-7 7"></path></svg></span>
+            <transition-group-stub data-v-797185e8="" name="dock-chip" tag="div" appear="false" persisted="false" css="true" class="target-chips" title="main"><span data-v-797185e8="" class="branch-chip chip-target wb-mono"><span data-v-797185e8="" class="chip-target-text">main</span><span data-v-797185e8="" aria-label="移除目标分支 main" class="chip-remove-btn" role="button" tabindex="0" title="移除 main"><svg data-v-5ede0785="" data-v-797185e8="" aria-hidden="true" class="app-icon" fill="none" height="10" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3" viewBox="0 0 24 24" width="10"><path data-v-5ede0785="" d="M18 6 6 18"></path><path data-v-5ede0785="" d="m6 6 12 12"></path></svg></span></span>
+              <!--v-if-->
+            </transition-group-stub>
+          </div>
         </div>
-      </div>
-    </div>
-    <div data-v-7a7a37b1="" class="action-bar" style="flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 12px 15px; border: 1px solid rgb(224, 224, 230); border-radius: 3px; background-color: rgb(255, 255, 255); box-sizing: border-box;">
-      <div data-v-7a7a37b1="" style="display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow-wrap: anywhere;"><span data-v-7a7a37b1="" class="n-text n-text--strong" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-text-color: rgb(51, 54, 57); --n-font-weight-strong: 500; --n-font-famliy-mono: v-mono, SFMono-Regular, Menlo, Consolas, Courier, monospace; --n-code-border-radius: 2px; --n-code-text-color: rgb(51, 54, 57); --n-code-color: rgb(244, 244, 248); --n-code-border: 1px solid #0000;">org/demo</span><span data-v-7a7a37b1="" class="n-text" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-text-color: rgb(118, 124, 130); --n-font-weight-strong: 500; --n-font-famliy-mono: v-mono, SFMono-Regular, Menlo, Consolas, Courier, monospace; --n-code-border-radius: 2px; --n-code-text-color: rgb(51, 54, 57); --n-code-color: rgb(244, 244, 248); --n-code-border: 1px solid #0000; font-size: 12px;">feat <span data-v-7a7a37b1=""> → main</span></span></div>
-      <div data-v-7a7a37b1="" role="none" class="n-space" style="display: flex; flex-direction: row; justify-content: flex-start; flex-wrap: wrap; margin-top: -4px; margin-bottom: -4px; align-items: center;">
-        <div role="none" style="max-width: 100%; margin-right: 12px; padding-top: 4px; padding-bottom: 4px;"><span data-v-7a7a37b1="" class="n-text" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-text-color: rgb(118, 124, 130); --n-font-weight-strong: 500; --n-font-famliy-mono: v-mono, SFMono-Regular, Menlo, Consolas, Courier, monospace; --n-code-border-radius: 2px; --n-code-text-color: rgb(51, 54, 57); --n-code-color: rgb(244, 244, 248); --n-code-border: 1px solid #0000; font-size: 12px;"> 已选 1 个目标分支 </span></div>
-        <div role="none" style="max-width: 100%; padding-top: 4px; padding-bottom: 4px;"><button data-v-7a7a37b1="" class="n-button n-button--primary-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 400; --n-color: #18a058; --n-color-hover: #36ad6a; --n-color-pressed: #0c7a43; --n-color-focus: #36ad6a; --n-color-disabled: #18a058; --n-ripple-color: #18a058; --n-text-color: #FFF; --n-text-color-hover: #FFF; --n-text-color-pressed: #FFF; --n-text-color-focus: #FFF; --n-text-color-disabled: #FFF; --n-border: 1px solid #18a058; --n-border-hover: 1px solid #36ad6a; --n-border-pressed: 1px solid #0c7a43; --n-border-focus: 1px solid #36ad6a; --n-border-disabled: 1px solid #18a058; --n-width: initial; --n-height: 34px; --n-font-size: 14px; --n-padding: 0 14px; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: 3px;">
-            <!---->
-            <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true">
+        <div data-v-797185e8="" class="dock-cta"><span data-v-797185e8="" class="dock-count wb-tabular"> 共 1 个目标 </span>
+          <div data-v-797185e8="" class="cta-btn-wrap is-glow" title="发起批量合并 (Ctrl+Enter)"><button data-v-797185e8="" class="n-button n-button--primary-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier: cubic-bezier(.4, 0, .2, 1); --n-bezier-ease-out: cubic-bezier(0, 0, .2, 1); --n-ripple-duration: .6s; --n-opacity-disabled: 0.5; --n-wave-opacity: 0.6; --n-font-weight: 500; --n-color: #0284C7; --n-color-hover: #0369A1; --n-color-pressed: #075985; --n-color-focus: #0369A1; --n-color-disabled: #0284C7; --n-ripple-color: #0284C7; --n-text-color: #FFF; --n-text-color-hover: #FFF; --n-text-color-pressed: #FFF; --n-text-color-focus: #FFF; --n-text-color-disabled: #FFF; --n-border: 1px solid #0284C7; --n-border-hover: 1px solid #0369A1; --n-border-pressed: 1px solid #075985; --n-border-focus: 1px solid #0369A1; --n-border-disabled: 1px solid #0284C7; --n-width: initial; --n-height: 32px; --n-font-size: 13px; --n-padding: 0 13px; --n-icon-size: 18px; --n-icon-margin: 6px; --n-border-radius: 7px;">
               <!---->
-            </transition-stub><span class="n-button__content">合并 (1)</span>
-            <div aria-hidden="true" class="n-base-wave"></div>
-            <div aria-hidden="true" class="n-button__border"></div>
-            <div aria-hidden="true" class="n-button__state-border"></div>
-          </button></div>
-      </div>
+              <transition-stub name="fade-in-width-expand-transition" appear="false" persisted="false" css="true"><span class="n-button__icon"><transition-stub name="icon-switch-transition" appear="true" persisted="false" css="true"><div class="n-icon-slot" role="none"><svg data-v-5ede0785="" data-v-797185e8="" aria-hidden="true" class="app-icon" fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24" width="14"><circle data-v-5ede0785="" cx="18" cy="18" r="3"></circle><circle data-v-5ede0785="" cx="6" cy="6" r="3"></circle><path data-v-5ede0785="" d="M6 21V9a9 9 0 0 0 9 9"></path></svg></div></transition-stub></span></transition-stub><span class="n-button__content"> 合并 (1)</span>
+              <div aria-hidden="true" class="n-base-wave"></div>
+              <div aria-hidden="true" class="n-button__border"></div>
+              <div aria-hidden="true" class="n-button__state-border"></div>
+            </button></div>
+        </div>
+      </footer>
     </div>
+    <!---->
+    <!---->
+    <!---->
   </div>
-  <!---->
-  <!---->
-  <!---->
   <!---->
   <!---->
 </div>"

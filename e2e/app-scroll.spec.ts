@@ -69,7 +69,7 @@ test("合并弹窗日志会自动滚动到底部", async ({ page }) => {
   const targetList = page.locator('[aria-label="目标分支列表"]');
   await expect(targetList).toBeVisible();
   await waitForAnyButton(targetList);
-  await targetList.locator("button").first().click();
+  await targetList.locator("button:not([disabled])").first().click();
 
   const startBtn = page.getByRole("button", { name: /^合并/ }).first();
   await expect(startBtn).toBeEnabled();

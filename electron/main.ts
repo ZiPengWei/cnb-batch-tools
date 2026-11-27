@@ -880,8 +880,15 @@ function createWindow() {
     minHeight: initial.minHeight,
     // 先隐藏窗口，页面首次渲染完成后再显示，避免启动白屏
     show: false,
-    // 背景跟随系统主题（渲染层 naive 主题同样跟随），避免深色系统下白闪
-    backgroundColor: nativeTheme.shouldUseDarkColors ? "#101014" : "#ffffff",
+    // 背景跟随系统主题（与渲染层曜石青蓝/云岩微雾底色一致），避免启动闪屏
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#0C0E12" : "#F4F6F9",
+    // macOS 启用一体化内嵌标题栏，红绿灯自然融入顶栏左侧
+    ...(process.platform === "darwin"
+      ? {
+          titleBarStyle: "hiddenInset" as const,
+          trafficLightPosition: { x: 16, y: 15 },
+        }
+      : {}),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
     },

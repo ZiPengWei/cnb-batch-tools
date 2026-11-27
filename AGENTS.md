@@ -45,10 +45,15 @@
 ### 渲染进程结构
 
 - `src/App.vue`
-  - 主界面外壳，负责认证、仓库选择、源分支选择、目标分支选择以及对话框流程编排。
-  - 三列列表的过滤输入统一用 `FilterInput` 组件（内部即时回显、对外防抖发值）：1200 仓库 / 900 分支全量渲染下，过滤按键不应触发 App 整体重渲染，新增输入类交互时沿用该组件。
-  - 深色模式跟随系统：`matchMedia(prefers-color-scheme: dark)` 驱动 naive `darkTheme`。注意 App.vue 是 `n-config-provider` 的父级，其 `useThemeVars` 注入不到自身（始终是浅色默认值）——内联样式取主题变量时用 `isDark ? darkTheme.common : themeVars`，新增样式沿用该模式。
-  - 注意 App.vue 是 n-config-provider 的父级这一结构是历史决定，若后续重构应把内容下沉为 provider 的子组件，让 `useThemeVars` 正常注入。
+  - 极薄的 Provider 外壳，挂载 `useTheme()`、`n-config-provider`（接入 `src/renderer/ui/theme.ts` 双模 `themeOverrides`）及内层 `WorkbenchShell.vue`，保证所有子组件正常注入主题变量。
+- `src/renderer/ui/theme.ts` & `src/style.css`
+  - 统一设计系统 Token：深色「曜石青蓝」与浅色「云岩微雾」双模配色，支持 `system / dark / light` 三态持久化（localStorage key `cnb-theme-mode`）；统一 Emil 强减速曲线（`--wb-ease-out` / `--wb-ease-in-out` / `--wb-ease-drawer`）及三列工作台公共样式。
+- `src/renderer/components/`（工作台模块化组件）：
+  - `WorkbenchShell.vue` — 主工作台编排、全局快捷键（`⌘/Ctrl+F`、`⌘/Ctrl+1/2/3`、`⌘/Ctrl+Enter`）、键盘流与 IPC 生命周期。
+  - `AppHeader.vue` — 紧凑顶栏（macOS 配合 `titleBarStyle: 'hiddenInset'` 融入红绿灯）、版本更新 Popover、最近合并历史时间线（支持一键回填）、外观切换及可折叠 CNB 认证面板。
+  - `RepoColumn.vue` / `SourceBranchColumn.vue` / `TargetBranchColumn.vue` — 无缝三栏列表，使用轻量原生 `<button>` 渲染与 `FilterInput`（内部即时回显、对外防抖、支持 `Esc` 清空）、关键词高亮、置顶/核心环境分组与「全部/已选」滑块切换。
+  - `MergeDock.vue` — 底部发车确认坞（可视化流向胶囊、悬停 `×` 移除、`+N` 溢出管理 Popover 与发起合并按钮）。
+  - `BatchMergeFlowDialog.vue` / `BatchMergeConfirmDialog.vue` / `BatchMergeFinishDialog.vue` — 合并确认（支持 `⌘/Ctrl+Enter` 提交与实时日志进度解析点亮）与结果明细弹窗。
 - Pinia stores 承担大部分渲染层状态：
   - `src/renderer/store/auth.ts` — CNB 认证（网页登录 Cookie / 访问令牌双模式，可切换账号、退出登录），本地持久化设置（localStorage key `cnb-auth`）、E2E 认证绕过；登录过期时经 `cnb:auth-expired` 事件弹出"是否重新登录"确认框，同意后自动弹出 CNB 登录窗口（`confirmRelogin` → 强制全新网页登录）。
   - `src/renderer/store/projects.ts` — 仓库列表、分支列表与选择状态（仓库以完整路径字符串 `org/repo` 标识，存于 `selectedRepo`），含仓库置顶状态与服务端双向同步；分支走"快速路径 + 后台排序"两段加载，`applySortedBranches` 接收主进程 `cnb:branches-sorted` 推送平滑更新；**上次会话现场持久化**（localStorage key `cnb-last-project`：repo/name/sourceBranch）——`loadProjects` 完成后自动恢复上次仓库（仓库仍在列表中才恢复）、分支加载后恢复上次源分支（`chooseSourceBranch` 统一记录源分支选择并持久化），配合 merge store 的目标分支记忆实现"关窗重开一切都在"。
@@ -161,12 +166,12 @@
 ## 需要保留的仓库约定
 
 - 该包使用 ESM（`"type": "module"`）。需要 CommonJS 的配置文件应保持 `.cjs` 形式，例如 `.eslintrc.cjs`。
-- Naive UI 必须保持“原生”用法。测试已经在 Vue 模板层面强制此约束：
-  - 不要直接给 `n-*` 组件添加 `class`、`style` 或 `size` 属性。
-  - 不要在 `n-config-provider` 上设置 `theme-overrides`、`cls-prefix`、`namespace` 或 `breakpoints`。
-  - 如需定制样式，使用外层包装元素与周边 CSS，而不是直接修改 Naive UI 组件。
-- 继续统一从 `src/renderer/ui/naive.ts` 导入 Naive UI，不要把 `naive-ui` 的直接导入分散到各处。
-- `App.vue` 已经较大。新增功能时，优先把逻辑下沉到 store、service 或更小的子组件中，不要继续往这个文件塞无关职责。
+- Naive UI 保持受控干净用法，测试（`tests/naiveSizeCheck.test.ts`）已在 Vue 模板层面强制此约束：
+  - 不要直接给 `n-*` 组件添加静态 `class`、`style` 或 `size` 属性。
+  - `n-config-provider` 的 `theme-overrides` 统一由 `src/renderer/ui/theme.ts` 提供，仍禁止覆写 `cls-prefix`、`namespace`、`breakpoints`。
+  - 如需定制样式，使用外层包装元素与周边 CSS，而不是在各处模板散写 Naive UI 覆写。
+- 继续统一从 `src/renderer/ui/naive.ts` 导入 Naive UI，不要把 `naive-ui` 的直接导入分散到各处，并及时清理未使用的导出。
+- 保持 `App.vue` 为极薄 Provider 壳；新增业务优先拆分独立子组件、composable 或 store。
 - 构建产物位于 `dist/` 和 `dist-electron/`。打包后的 Electron 主入口是 `dist-electron/main.js`。
 
 ## 历史迁移说明
